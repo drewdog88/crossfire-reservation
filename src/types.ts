@@ -1,0 +1,81 @@
+export type Gender = 'Boys' | 'Girls'
+export type Level = 'A' | 'B' | 'C' | 'D'
+export type FieldType = 'Turf' | 'Grass'
+export type UserRole = 'admin' | 'coach'
+export type View = 'schedule' | 'reserve' | 'myfields' | 'admin'
+export type AdminTab = 'teams' | 'locations' | 'fields' | 'slots' | 'users'
+
+export interface Team {
+  id: string
+  gender: Gender
+  birthYear: number
+  level: Level
+}
+
+export interface Location {
+  id: string
+  name: string
+  city: string
+}
+
+export interface Field {
+  id: string
+  locationId: string
+  name: string
+  type: FieldType
+}
+
+export interface SlotConfig {
+  id: string
+  fieldId: string
+  date: string // YYYY-MM-DD
+  maxTeams: number
+  reservedTeamIds: string[]
+}
+
+export interface User {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  role: UserRole
+  teamIds: string[]
+}
+
+export function teamLabel(team: Team): string {
+  return `${team.gender === 'Boys' ? 'B' : 'G'}${team.birthYear}-${team.level}`
+}
+
+export function dateToStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+export function getWeekDates(weekOffset: number): Date[] {
+  const today = new Date()
+  const dow = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + weekOffset * 7)
+  monday.setHours(0, 0, 0, 0)
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
+}
+
+export function weekRangeLabel(dates: Date[]): string {
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${fmt(dates[0])} – ${fmt(dates[6])}`
+}
+
+export function formatDisplayDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+export const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
