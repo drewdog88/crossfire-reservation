@@ -18,7 +18,9 @@ This project moves the source of truth to **Neon Postgres**, served through
 
 ## Goals
 
-- Single shared source of truth in Neon Postgres.
+- Single shared source of truth in Neon Postgres. **No fallback** — no
+  localStorage store, no SQLite, no in-memory data. If `DATABASE_URL` is missing
+  the API fails loud at startup; it never silently degrades to a local store.
 - Reservation rules enforced **server-side, transactionally**, backed by DB
   constraints (safe under concurrent booking).
 - Season-scoped data (a full 30-week season already exists in the source sheet).
@@ -120,10 +122,25 @@ Scope matters — most limits are keyed on the **team**, not the coach:
 | ≤ 2 reservations per week, on different days | **team** | Count that team's reservations in the season-week before insert; reject a 3rd or a second same-day booking |
 | No two overlapping-time bookings same day | **team** | Reject if the team already holds a slot whose time window overlaps on that date |
 | A coach may only book/cancel for their own teams | **coach** | `team_id` must be in the actor's `user_teams` |
+| An admin may book/cancel for **any** team | **admin** | `role='admin'` skips the own-team check only — all other rules below still apply |
 
 Because quotas are per-team, a coach who owns B14 D and G12 C can book up to 2 for
 **each** in the same week (independent quotas) — the coach is never limited to a
 single team.
+
+### Admin authority
+
+An admin has full authority across the tool: they manage every structural entity
+(seasons, teams — including names/levels/coach assignment, locations, fields,
+slots, users) and they can **act on any team's reservations** — assign a team to a
+field/slot (book), reassign, or cancel — regardless of which teams they own. The
+own-team ownership check is the **only** rule waived for admins. The reservation
+rules themselves (slot capacity, one-team-per-spot, ≤ 2 per week on different days,
+no overlapping-time bookings) **apply equally to admin actions** — an admin cannot
+force a booking that breaks them. This keeps the schedule internally consistent and
+prevents a mistaken admin action from corrupting the data. `POST`/`DELETE
+/api/reservations` therefore accept any `team_id` when the actor is an admin, but
+run the same transactional rule checks; `created_by` records the acting admin.
 
 ## API surface
 
@@ -135,7 +152,7 @@ single team.
 | `/api/auth/me` | GET | cookie | Current user + role + owned teams, else 401 |
 | `/api/seasons` | GET | public | List seasons (active flagged) |
 | `/api/schedule` | GET | public | Day-by-day schedule for `?seasonId=&week=` (feeds Schedule/Reserve/My Fields) |
-| `/api/reservations` | POST · DELETE | coach | Book / cancel — transactional, all rules enforced |
+| `/api/reservations` | POST · DELETE | coach + admin | Book / cancel — transactional, all rules enforced. Coach: own teams only. Admin: any team (own-team check waived, other rules still apply). |
 | `/api/reservations/search` | GET | coach + admin | Flat filterable list: `?seasonId=&week=&teamId=&fieldId=&locationId=&coachName=` |
 | `/api/admin/teams` | GET·POST·PUT·DELETE | admin | CRUD (cascade delete) |
 | `/api/admin/locations` | GET·POST·PUT·DELETE | admin | CRUD (cascade delete) |
@@ -170,7 +187,7 @@ Shared `_lib`: `db.js` (Neon client), `http.js` (`json`, `methodGuard`,
 | **Reserve** | coach | Book via visual field cards (unchanged) |
 | **My Fields** | coach | **Kept** — visual field-card view of *your* reservations this week |
 | **My Upcoming** *(new)* | coach + admin | Flat, searchable list; default upcoming week, navigable; global reach |
-| **Admin** | admin | CRUD + approve pending users (illustrative) |
+| **Admin** | admin | CRUD (teams/names/levels/coaches, locations, fields, slots, users) + approve pending users + book/cancel any team's reservations |
 
 Mobile bottom nav shows all five flat items with short labels/icons.
 
@@ -231,13 +248,18 @@ admins can correct via the UI.
 
 | Variable | Where | Purpose |
 |---|---|---|
-| `DATABASE_URL` | Vercel env | **Pooled** Neon connection (`-pooler` host) used by the app/API |
-| `JWT_SECRET` | Vercel env | Signing key for the `cf_session` JWT cookie |
-| `NEW_DATABASE_URL` | local `.env.migrate` (gitignored) | Pooled connection to a non-prod Neon branch for `apply-schema.mjs` / `seed.mjs` |
-| `ADMIN_PASSWORD` | local `.env.migrate` (optional) | Seed admin password; if unset, `seed.mjs` generates and prints one |
+| `DATABASE_URL` | Vercel env (Prod + Preview + Dev) | **Pooled** Neon connection (`-pooler` host, us-west-2) used by the app/API |
+| `JWT_SECRET` | Vercel env (Prod + Preview + Dev) | Signing key for the `cf_session` JWT cookie |
+| `DATABASE_URL` (pooled) + `NEW_DATABASE_URL` (direct/unpooled) | local `.env.local` (gitignored) | App uses pooled; `apply-schema.mjs` / `seed.mjs` use the direct host |
+| `ADMIN_PASSWORD` | local `.env.local` (optional) | Seed admin password; if unset, `seed.mjs` generates and prints one |
 
-`.env*` and `.vercel` are already gitignored. The Neon–Vercel integration can set
-`DATABASE_URL` automatically on first connect.
+Neon lives in **AWS us-west-2 (Oregon)**; Vercel functions are pinned to `pdx1`
+(also us-west-2) so DB round-trips stay in-region. Only `DATABASE_URL` (pooled)
+and `JWT_SECRET` go to Vercel — the `POSTGRES_*`/`PG*` aliases Neon emits are not
+needed by the app. `.env*` and `.vercel` are gitignored; the live Neon
+credentials never enter the public repo. GitHub Actions secrets are **not** added
+now — they arrive only with the deferred backup-drill spec (which needs the
+direct/unpooled URL as a repo secret).
 
 ## Testing
 
