@@ -393,7 +393,11 @@ function FieldPitchCard({
         >
           {myReservation ? (
             <>
-              <span className="text-xs text-cf-green font-medium">Your team has this slot</span>
+              <span className="text-xs text-cf-green font-medium">
+                {selectedTeamId && teamMap[selectedTeamId]
+                  ? `${teamLabel(teamMap[selectedTeamId])} · reserved`
+                  : 'Reserved'}
+              </span>
               <Btn variant="danger" size="sm" onClick={() => onCancel?.(slot.id, selectedTeamId!)}>
                 Cancel
               </Btn>
