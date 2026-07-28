@@ -29,6 +29,8 @@ export interface SlotConfig {
   id: string
   fieldId: string
   date: string // YYYY-MM-DD
+  startTime: string // HH:MM (24h)
+  endTime: string // HH:MM (24h)
   maxTeams: number
   reservedTeamIds: string[]
 }
@@ -44,7 +46,22 @@ export interface User {
 }
 
 export function teamLabel(team: Team): string {
-  return `${team.gender === 'Boys' ? 'B' : 'G'}${team.birthYear}-${team.level}`
+  const yy = String(team.birthYear).slice(-2).padStart(2, '0')
+  return `${team.gender === 'Boys' ? 'B' : 'G'}${yy}-${team.level}`
+}
+
+// Formats a 24h "HH:MM" time to a display string like "5:30 pm"
+export function formatTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  if (Number.isNaN(h)) return hhmm
+  const period = h >= 12 ? 'pm' : 'am'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return m === 0 ? `${hour12} ${period}` : `${hour12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+// "5:30 pm – 7:00 pm"
+export function timeRangeLabel(start: string, end: string): string {
+  return `${formatTime(start)} – ${formatTime(end)}`
 }
 
 export function dateToStr(date: Date): string {

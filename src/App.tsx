@@ -3,7 +3,7 @@ import type { ReactNode, FormEvent } from 'react'
 import {
   type Team, type Location, type Field, type SlotConfig, type User,
   type View, type AdminTab, type Gender, type Level, type FieldType, type UserRole,
-  teamLabel, dateToStr, getWeekDates, weekRangeLabel, formatDisplayDate,
+  teamLabel, dateToStr, getWeekDates, weekRangeLabel, formatDisplayDate, timeRangeLabel,
 } from './types'
 
 // ─── Seed Data ──────────────────────────────────────────────────────────────
@@ -50,29 +50,34 @@ function buildSeedSlots(): SlotConfig[] {
   const d = (offset: number) => {
     const x = new Date(mon); x.setDate(mon.getDate() + offset); return dateToStr(x)
   }
+  const EVENING = { startTime: '17:30', endTime: '19:00' }
+  const LATE    = { startTime: '19:00', endTime: '20:30' }
   return [
-    { id: 's1',  fieldId: 'f1', date: d(0), maxTeams: 4, reservedTeamIds: ['t2','t7'] },
-    { id: 's2',  fieldId: 'f1', date: d(2), maxTeams: 4, reservedTeamIds: ['t1'] },
-    { id: 's3',  fieldId: 'f1', date: d(5), maxTeams: 6, reservedTeamIds: ['t8','t9','t3'] },
-    { id: 's4',  fieldId: 'f2', date: d(1), maxTeams: 6, reservedTeamIds: ['t4','t5'] },
-    { id: 's5',  fieldId: 'f2', date: d(4), maxTeams: 6, reservedTeamIds: ['t1','t2','t3','t7','t8','t10'] },
-    { id: 's6',  fieldId: 'f2', date: d(5), maxTeams: 4, reservedTeamIds: [] },
-    { id: 's7',  fieldId: 'f3', date: d(0), maxTeams: 3, reservedTeamIds: ['t11'] },
-    { id: 's8',  fieldId: 'f3', date: d(3), maxTeams: 3, reservedTeamIds: [] },
-    { id: 's9',  fieldId: 'f3', date: d(5), maxTeams: 3, reservedTeamIds: ['t6','t12'] },
-    { id: 's10', fieldId: 'f4', date: d(0), maxTeams: 5, reservedTeamIds: ['t10'] },
-    { id: 's11', fieldId: 'f4', date: d(2), maxTeams: 5, reservedTeamIds: [] },
-    { id: 's12', fieldId: 'f4', date: d(4), maxTeams: 8, reservedTeamIds: ['t4','t6'] },
-    { id: 's13', fieldId: 'f5', date: d(1), maxTeams: 4, reservedTeamIds: [] },
-    { id: 's14', fieldId: 'f5', date: d(5), maxTeams: 4, reservedTeamIds: ['t5'] },
-    { id: 's15', fieldId: 'f6', date: d(3), maxTeams: 6, reservedTeamIds: ['t7','t8'] },
-    { id: 's16', fieldId: 'f6', date: d(5), maxTeams: 6, reservedTeamIds: ['t9','t11','t12'] },
-    { id: 's17', fieldId: 'f7', date: d(0), maxTeams: 8, reservedTeamIds: ['t2','t3'] },
-    { id: 's18', fieldId: 'f7', date: d(2), maxTeams: 8, reservedTeamIds: [] },
-    { id: 's19', fieldId: 'f7', date: d(4), maxTeams: 8, reservedTeamIds: [] },
-    { id: 's20', fieldId: 'f7', date: d(6), maxTeams: 8, reservedTeamIds: ['t1'] },
-    { id: 's21', fieldId: 'f8', date: d(1), maxTeams: 4, reservedTeamIds: [] },
-    { id: 's22', fieldId: 'f8', date: d(5), maxTeams: 4, reservedTeamIds: ['t10','t11'] },
+    { id: 's1',  fieldId: 'f1', date: d(0), ...EVENING, maxTeams: 4, reservedTeamIds: ['t2','t7'] },
+    { id: 's2',  fieldId: 'f1', date: d(2), ...EVENING, maxTeams: 4, reservedTeamIds: ['t1'] },
+    { id: 's3',  fieldId: 'f1', date: d(5), ...EVENING, maxTeams: 6, reservedTeamIds: ['t8','t9','t3'] },
+    { id: 's4',  fieldId: 'f2', date: d(1), ...EVENING, maxTeams: 6, reservedTeamIds: ['t4','t5'] },
+    { id: 's5',  fieldId: 'f2', date: d(4), ...EVENING, maxTeams: 6, reservedTeamIds: ['t1','t2','t3','t7','t8','t10'] },
+    { id: 's6',  fieldId: 'f2', date: d(5), ...EVENING, maxTeams: 4, reservedTeamIds: [] },
+    { id: 's7',  fieldId: 'f3', date: d(0), ...EVENING, maxTeams: 3, reservedTeamIds: ['t11'] },
+    { id: 's8',  fieldId: 'f3', date: d(3), ...EVENING, maxTeams: 3, reservedTeamIds: [] },
+    { id: 's9',  fieldId: 'f3', date: d(5), ...EVENING, maxTeams: 3, reservedTeamIds: ['t6','t12'] },
+    { id: 's10', fieldId: 'f4', date: d(0), ...EVENING, maxTeams: 5, reservedTeamIds: ['t10'] },
+    { id: 's11', fieldId: 'f4', date: d(2), ...EVENING, maxTeams: 5, reservedTeamIds: [] },
+    { id: 's12', fieldId: 'f4', date: d(4), ...EVENING, maxTeams: 8, reservedTeamIds: ['t4','t6'] },
+    // Same field + day, second time window — the case the flat model couldn't represent
+    { id: 's12b',fieldId: 'f4', date: d(4), ...LATE,    maxTeams: 6, reservedTeamIds: ['t7'] },
+    { id: 's13', fieldId: 'f5', date: d(1), ...EVENING, maxTeams: 4, reservedTeamIds: [] },
+    { id: 's14', fieldId: 'f5', date: d(5), ...EVENING, maxTeams: 4, reservedTeamIds: ['t5'] },
+    { id: 's14b',fieldId: 'f5', date: d(5), ...LATE,    maxTeams: 4, reservedTeamIds: [] },
+    { id: 's15', fieldId: 'f6', date: d(3), ...EVENING, maxTeams: 6, reservedTeamIds: ['t7','t8'] },
+    { id: 's16', fieldId: 'f6', date: d(5), ...EVENING, maxTeams: 6, reservedTeamIds: ['t9','t11','t12'] },
+    { id: 's17', fieldId: 'f7', date: d(0), ...EVENING, maxTeams: 8, reservedTeamIds: ['t2','t3'] },
+    { id: 's18', fieldId: 'f7', date: d(2), ...EVENING, maxTeams: 8, reservedTeamIds: [] },
+    { id: 's19', fieldId: 'f7', date: d(4), ...EVENING, maxTeams: 8, reservedTeamIds: [] },
+    { id: 's20', fieldId: 'f7', date: d(6), ...EVENING, maxTeams: 8, reservedTeamIds: ['t1'] },
+    { id: 's21', fieldId: 'f8', date: d(1), ...EVENING, maxTeams: 4, reservedTeamIds: [] },
+    { id: 's22', fieldId: 'f8', date: d(5), ...EVENING, maxTeams: 4, reservedTeamIds: ['t10','t11'] },
   ]
 }
 
@@ -245,6 +250,15 @@ function sectionH(maxTeams: number) {
   return 54
 }
 
+// Sort slots by date, then start time, then field name — used by every schedule view
+function compareSlots(fieldMap: Record<string, Field>) {
+  return (a: SlotConfig, b: SlotConfig) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date)
+    if (a.startTime !== b.startTime) return a.startTime.localeCompare(b.startTime)
+    return (fieldMap[a.fieldId]?.name ?? '').localeCompare(fieldMap[b.fieldId]?.name ?? '')
+  }
+}
+
 function formatDayHeader(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
@@ -380,7 +394,7 @@ function FieldPitchCard({
 }) {
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const filled = slot.reservedTeamIds.length
-  const open = slot.maxTeams - filled
+  const open = Math.max(0, slot.maxTeams - filled)
   const h = sectionH(slot.maxTeams)
   const totalH = h * slot.maxTeams + Math.max(0, slot.maxTeams - 1) * 2
   const [g1, g2] = GRASS[field.type]
@@ -410,6 +424,9 @@ function FieldPitchCard({
           </div>
           <p className="text-xs font-medium mt-0.5" style={{ color: 'rgba(148,163,184,0.8)' }}>
             {location?.name} · {location?.city}
+          </p>
+          <p className="text-xs font-display font-600 tracking-wide mt-0.5 text-cf-green">
+            {timeRangeLabel(slot.startTime, slot.endTime)}
           </p>
         </div>
         <div className="text-right flex-shrink-0">
@@ -521,7 +538,7 @@ function ScheduleView({
 
   const weekSlots = slots
     .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId]?.type === fieldType)
-    .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : (fieldMap[a.fieldId]?.name ?? '').localeCompare(fieldMap[b.fieldId]?.name ?? ''))
+    .sort(compareSlots(fieldMap))
 
   const byDate: Record<string, SlotConfig[]> = {}
   weekSlots.forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s) })
@@ -601,7 +618,7 @@ function ReserveView({
 
   const weekSlots = slots
     .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId]?.type === fieldType)
-    .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : (fieldMap[a.fieldId]?.name ?? '').localeCompare(fieldMap[b.fieldId]?.name ?? ''))
+    .sort(compareSlots(fieldMap))
 
   const byDate: Record<string, SlotConfig[]> = {}
   weekSlots.forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s) })
@@ -706,8 +723,8 @@ function MyFieldsView({
   const myTeamIds = new Set(currentUser.teamIds)
 
   const mySlots = slots
-    .filter(s => weekDateSet.has(s.date) && s.reservedTeamIds.some(id => myTeamIds.has(id)))
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId] && s.reservedTeamIds.some(id => myTeamIds.has(id)))
+    .sort(compareSlots(fieldMap))
 
   return (
     <div className="pb-24">
@@ -759,6 +776,23 @@ function AdminView({
     { id: 'slots',     label: 'Slots' },
     { id: 'users',     label: 'Users' },
   ]
+
+  // Cascade deletes so no dangling references survive (ghost reservations, orphan fields/slots).
+  function deleteTeam(id: string) {
+    setTeams(teams.filter(t => t.id !== id))
+    setSlots(slots.map(s => s.reservedTeamIds.includes(id) ? { ...s, reservedTeamIds: s.reservedTeamIds.filter(x => x !== id) } : s))
+    setUsers(users.map(u => u.teamIds.includes(id) ? { ...u, teamIds: u.teamIds.filter(x => x !== id) } : u))
+  }
+  function deleteLocation(id: string) {
+    const orphanedFieldIds = new Set(fields.filter(f => f.locationId === id).map(f => f.id))
+    setLocations(locations.filter(l => l.id !== id))
+    setFields(fields.filter(f => f.locationId !== id))
+    setSlots(slots.filter(s => !orphanedFieldIds.has(s.fieldId)))
+  }
+  function deleteField(id: string) {
+    setFields(fields.filter(f => f.id !== id))
+    setSlots(slots.filter(s => s.fieldId !== id))
+  }
   return (
     <div className="pb-24">
       <div className="sticky top-[60px] z-20 bg-navy-900 border-b border-navy-700">
@@ -774,9 +808,9 @@ function AdminView({
         </div>
       </div>
       <div className="px-4 pt-4">
-        {tab === 'teams'     && <AdminTeams teams={teams} setTeams={setTeams} />}
-        {tab === 'locations' && <AdminLocations locations={locations} setLocations={setLocations} />}
-        {tab === 'fields'    && <AdminFields fields={fields} setFields={setFields} locations={locations} />}
+        {tab === 'teams'     && <AdminTeams teams={teams} setTeams={setTeams} onDelete={deleteTeam} />}
+        {tab === 'locations' && <AdminLocations locations={locations} setLocations={setLocations} onDelete={deleteLocation} />}
+        {tab === 'fields'    && <AdminFields fields={fields} setFields={setFields} locations={locations} onDelete={deleteField} />}
         {tab === 'slots'     && <AdminSlots slots={slots} setSlots={setSlots} fields={fields} locations={locations} weekOffset={weekOffset} onWeekChange={onWeekChange} teams={teams} />}
         {tab === 'users'     && <AdminUsers users={users} setUsers={setUsers} teams={teams} />}
       </div>
@@ -786,7 +820,7 @@ function AdminView({
 
 function uid() { return Math.random().toString(36).slice(2, 10) }
 
-function AdminTeams({ teams, setTeams }: { teams: Team[]; setTeams: (t: Team[]) => void }) {
+function AdminTeams({ teams, setTeams, onDelete }: { teams: Team[]; setTeams: (t: Team[]) => void; onDelete: (id: string) => void }) {
   const [form, setForm] = useState<Partial<Team>>({ gender: 'Boys', level: 'A' })
   const [editId, setEditId] = useState<string | null>(null)
 
@@ -803,7 +837,6 @@ function AdminTeams({ teams, setTeams }: { teams: Team[]; setTeams: (t: Team[]) 
   }
 
   function startEdit(t: Team) { setEditId(t.id); setForm(t) }
-  function del(id: string) { setTeams(teams.filter(t => t.id !== id)) }
 
   return (
     <div className="space-y-4">
@@ -837,12 +870,12 @@ function AdminTeams({ teams, setTeams }: { teams: Team[]; setTeams: (t: Team[]) 
         </form>
       </Card>
       <div className="space-y-2">
-        {teams.sort((a, b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
+        {[...teams].sort((a, b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
           <div key={t.id} className="flex items-center justify-between bg-navy-800 rounded-lg px-4 py-3 border border-navy-700/50">
             <span className="font-display text-base font-700 text-navy-100">{teamLabel(t)}</span>
             <div className="flex gap-2">
               <button onClick={() => startEdit(t)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconEdit /></button>
-              <button onClick={() => del(t.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
+              <button onClick={() => onDelete(t.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
             </div>
           </div>
         ))}
@@ -851,7 +884,7 @@ function AdminTeams({ teams, setTeams }: { teams: Team[]; setTeams: (t: Team[]) 
   )
 }
 
-function AdminLocations({ locations, setLocations }: { locations: Location[]; setLocations: (l: Location[]) => void }) {
+function AdminLocations({ locations, setLocations, onDelete }: { locations: Location[]; setLocations: (l: Location[]) => void; onDelete: (id: string) => void }) {
   const [form, setForm] = useState({ name: '', city: '' })
   const [editId, setEditId] = useState<string | null>(null)
 
@@ -868,7 +901,6 @@ function AdminLocations({ locations, setLocations }: { locations: Location[]; se
   }
 
   function startEdit(l: Location) { setEditId(l.id); setForm({ name: l.name, city: l.city }) }
-  function del(id: string) { setLocations(locations.filter(l => l.id !== id)) }
 
   return (
     <div className="space-y-4">
@@ -899,7 +931,7 @@ function AdminLocations({ locations, setLocations }: { locations: Location[]; se
             </div>
             <div className="flex gap-2">
               <button onClick={() => startEdit(l)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconEdit /></button>
-              <button onClick={() => del(l.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
+              <button onClick={() => onDelete(l.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
             </div>
           </div>
         ))}
@@ -908,7 +940,7 @@ function AdminLocations({ locations, setLocations }: { locations: Location[]; se
   )
 }
 
-function AdminFields({ fields, setFields, locations }: { fields: Field[]; setFields: (f: Field[]) => void; locations: Location[] }) {
+function AdminFields({ fields, setFields, locations, onDelete }: { fields: Field[]; setFields: (f: Field[]) => void; locations: Location[]; onDelete: (id: string) => void }) {
   const [form, setForm] = useState({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' as FieldType })
   const [editId, setEditId] = useState<string | null>(null)
 
@@ -925,7 +957,6 @@ function AdminFields({ fields, setFields, locations }: { fields: Field[]; setFie
   }
 
   function startEdit(f: Field) { setEditId(f.id); setForm({ locationId: f.locationId, name: f.name, type: f.type }) }
-  function del(id: string) { setFields(fields.filter(f => f.id !== id)) }
 
   const locationMap = Object.fromEntries(locations.map(l => [l.id, l]))
 
@@ -970,7 +1001,7 @@ function AdminFields({ fields, setFields, locations }: { fields: Field[]; setFie
               </div>
               <div className="flex gap-2">
                 <button onClick={() => startEdit(f)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconEdit /></button>
-                <button onClick={() => del(f.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
+                <button onClick={() => onDelete(f.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
               </div>
             </div>
           )
@@ -988,7 +1019,7 @@ function AdminSlots({
   weekOffset: number; onWeekChange: (o: number) => void;
   teams: Team[];
 }) {
-  const [form, setForm] = useState({ fieldId: fields[0]?.id ?? '', date: '', maxTeams: 4 })
+  const [form, setForm] = useState({ fieldId: fields[0]?.id ?? '', date: '', startTime: '17:30', endTime: '19:00', maxTeams: 4 })
 
   const weekDates = getWeekDates(weekOffset)
   const weekDateSet = new Set(weekDates.map(dateToStr))
@@ -997,22 +1028,28 @@ function AdminSlots({
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
 
   const weekSlots = slots
-    .filter(s => weekDateSet.has(s.date))
-    .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : (fieldMap[a.fieldId]?.name ?? '').localeCompare(fieldMap[b.fieldId]?.name ?? ''))
+    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId])
+    .sort(compareSlots(fieldMap))
 
   function addSlot(e: FormEvent) {
     e.preventDefault()
-    if (!form.fieldId || !form.date) return
-    const dup = slots.find(s => s.fieldId === form.fieldId && s.date === form.date)
-    if (dup) { alert('A slot for this field and date already exists.'); return }
-    setSlots([...slots, { id: uid(), fieldId: form.fieldId, date: form.date, maxTeams: form.maxTeams, reservedTeamIds: [] }])
+    if (!form.fieldId || !form.date || !form.startTime || !form.endTime) return
+    if (form.endTime <= form.startTime) { alert('End time must be after start time.'); return }
+    const dup = slots.find(s => s.fieldId === form.fieldId && s.date === form.date && s.startTime === form.startTime)
+    if (dup) { alert('A slot for this field, date, and start time already exists.'); return }
+    setSlots([...slots, { id: uid(), fieldId: form.fieldId, date: form.date, startTime: form.startTime, endTime: form.endTime, maxTeams: form.maxTeams, reservedTeamIds: [] }])
     setForm(p => ({ ...p, date: '' }))
   }
 
   function delSlot(id: string) { setSlots(slots.filter(s => s.id !== id)) }
 
   function updateMax(slotId: string, val: number) {
-    setSlots(slots.map(s => s.id === slotId ? { ...s, maxTeams: Math.max(1, Math.min(8, val)) } : s))
+    setSlots(slots.map(s => {
+      if (s.id !== slotId) return s
+      // Floor cannot drop below teams already reserved, or the schedule views crash on a negative "open" count
+      const floor = Math.max(1, s.reservedTeamIds.length)
+      return { ...s, maxTeams: Math.max(floor, Math.min(8, val)) }
+    }))
   }
 
   function removeTeam(slotId: string, teamId: string) {
@@ -1051,6 +1088,14 @@ function AdminSlots({
               <label className="text-xs text-navy-400 mb-1 block">Max Teams (1–8)</label>
               <input type="number" min={1} max={8} value={form.maxTeams} onChange={e => setForm(p => ({ ...p, maxTeams: Number(e.target.value) }))} />
             </div>
+            <div>
+              <label className="text-xs text-navy-400 mb-1 block">Start Time</label>
+              <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="text-xs text-navy-400 mb-1 block">End Time</label>
+              <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))} required />
+            </div>
           </div>
           <Btn type="submit" variant="primary" size="sm">Add Slot</Btn>
         </form>
@@ -1069,7 +1114,7 @@ function AdminSlots({
                 <div className="px-4 py-3 border-b border-navy-700/50 flex items-start justify-between gap-2">
                   <div>
                     <p className="font-display font-700 text-navy-100">{loc?.name} · {field?.name}</p>
-                    <p className="text-xs text-navy-400 mt-0.5">{formatDisplayDate(slot.date)}</p>
+                    <p className="text-xs text-navy-400 mt-0.5">{formatDisplayDate(slot.date)} · {timeRangeLabel(slot.startTime, slot.endTime)}</p>
                   </div>
                   <button onClick={() => delSlot(slot.id)} className="text-navy-500 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors flex-shrink-0"><IconTrash /></button>
                 </div>
@@ -1182,7 +1227,7 @@ function AdminUsers({ users, setUsers, teams }: { users: User[]; setUsers: (u: U
               <div>
                 <label className="text-xs text-navy-400 mb-1.5 block">Assigned Teams</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {teams.sort((a,b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
+                  {[...teams].sort((a,b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
                     <button key={t.id} type="button" onClick={() => toggleTeam(t.id)}
                       className={`px-2.5 py-1 rounded text-xs font-display font-700 transition-all ${
                         form.teamIds.includes(t.id) ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600'
@@ -1295,7 +1340,7 @@ function AuthModal({ onClose, onLogin, users, setUsers, teams }: {
               <div>
                 <label className="text-xs text-navy-400 mb-1.5 block">Your Team(s)</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {teams.sort((a,b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
+                  {[...teams].sort((a,b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
                     <button key={t.id} type="button" onClick={() => toggleTeam(t.id)}
                       className={`px-2.5 py-1 rounded text-xs font-display font-700 transition-all ${
                         teamIds.includes(t.id) ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600'
