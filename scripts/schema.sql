@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS fields (
   id          serial PRIMARY KEY,
   location_id int REFERENCES locations(id) ON DELETE CASCADE,
   name        text NOT NULL,
-  type        text NOT NULL CHECK (type IN ('Turf','Grass'))
+  -- Surface is optional: NULL means unknown / not specified.
+  type        text CHECK (type IN ('Turf','Grass'))
 );
 
 CREATE TABLE IF NOT EXISTS slots (

@@ -1,6 +1,8 @@
 export type Gender = 'Boys' | 'Girls'
 export type Level = 'A' | 'B' | 'C' | 'D'
+// A field's surface is optional: coaches/admins may leave it unset ("Unknown").
 export type FieldType = 'Turf' | 'Grass'
+export type Surface = FieldType | null
 export type UserRole = 'admin' | 'coach'
 export type View = 'schedule' | 'reserve' | 'myfields' | 'admin'
 export type AdminTab = 'teams' | 'locations' | 'fields' | 'slots' | 'users'
@@ -23,7 +25,7 @@ export interface Field {
   id: string
   locationId: string
   name: string
-  type: FieldType
+  type: Surface // null = surface unknown / not specified
 }
 
 export interface SlotConfig {

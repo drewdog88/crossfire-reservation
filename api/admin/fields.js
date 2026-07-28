@@ -12,12 +12,14 @@ export default async function handler(req, res) {
       return sendJson(res, 200, rows.map(S.field))
     }
     const body = await readBody(req)
+    // Surface is optional; anything other than Turf/Grass becomes NULL (unknown).
+    const surface = body.type === 'Turf' || body.type === 'Grass' ? body.type : null
     if (req.method === 'POST') {
-      const { rows } = await query('INSERT INTO fields (location_id, name, type) VALUES ($1,$2,$3) RETURNING *', [Number(body.locationId), body.name, body.type])
+      const { rows } = await query('INSERT INTO fields (location_id, name, type) VALUES ($1,$2,$3) RETURNING *', [Number(body.locationId), body.name, surface])
       return sendJson(res, 200, S.field(rows[0]))
     }
     if (req.method === 'PUT') {
-      const { rows } = await query('UPDATE fields SET location_id=$2, name=$3, type=$4 WHERE id=$1 RETURNING *', [Number(body.id), Number(body.locationId), body.name, body.type])
+      const { rows } = await query('UPDATE fields SET location_id=$2, name=$3, type=$4 WHERE id=$1 RETURNING *', [Number(body.id), Number(body.locationId), body.name, surface])
       if (rows.length === 0) return sendJson(res, 404, { error: 'Not found.' })
       return sendJson(res, 200, S.field(rows[0]))
     }

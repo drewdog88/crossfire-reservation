@@ -18,7 +18,8 @@ export function location(r) {
   return { id: String(r.id), name: r.name, city: r.city ?? null }
 }
 export function field(r) {
-  return { id: String(r.id), locationId: String(r.location_id), name: r.name, type: r.type }
+  // type is null when the surface is unknown / unspecified.
+  return { id: String(r.id), locationId: String(r.location_id), name: r.name, type: r.type ?? null }
 }
 export function slot(r, reservedTeamIds) {
   return {

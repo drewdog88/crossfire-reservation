@@ -2,20 +2,21 @@ import { useState, useEffect } from 'react'
 import type { ReactNode, FormEvent } from 'react'
 import {
   type Team, type Location, type Field, type SlotConfig, type User,
-  type View, type AdminTab, type Gender, type FieldType, type UserRole,
+  type View, type AdminTab, type Gender, type FieldType, type Surface, type UserRole,
   teamLabel, dateToStr, getWeekDates, weekRangeLabel, formatDisplayDate, timeRangeLabel,
 } from './types'
 import * as api from './api'
 
 // ─── Shared UI ───────────────────────────────────────────────────────────────
 
-function Chip({ children, color = 'green' }: { children: ReactNode; color?: 'green' | 'amber' | 'red' | 'navy' | 'blue' }) {
+function Chip({ children, color = 'green' }: { children: ReactNode; color?: 'green' | 'amber' | 'red' | 'navy' | 'blue' | 'gray' }) {
   const cls = {
     green: 'bg-cf-green/12 text-cf-green border-cf-green/30',
     amber: 'bg-amber-500/15 text-amber-700 border-amber-500/40',
     red:   'bg-red-500/12 text-red-700 border-red-500/40',
     navy:  'bg-navy-700 text-navy-300 border-navy-600',
     blue:  'bg-blue-500/12 text-blue-700 border-blue-500/40',
+    gray:  'bg-slate-500/12 text-slate-600 border-slate-400/40',
   }[color]
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border font-display tracking-wide ${cls}`}>
@@ -128,16 +129,20 @@ function WeekNav({ weekOffset, onChange }: { weekOffset: number; onChange: (o: n
   )
 }
 
-function FieldTypeToggle({ value, onChange }: { value: FieldType; onChange: (v: FieldType) => void }) {
+// Filter the schedule/reserve views by location. 'all' shows every location.
+// Surface (Turf/Grass) is intentionally not a filter — it's informational only.
+function LocationFilter({ locations, value, onChange }: {
+  locations: Location[]; value: string; onChange: (v: string) => void
+}) {
+  const pill = (active: boolean) =>
+    `px-3 py-1.5 rounded-lg font-display text-sm font-600 tracking-wide whitespace-nowrap transition-all duration-150 ${
+      active ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600 hover:text-navy-100'
+    }`
   return (
-    <div className="flex gap-2 px-4 pt-3 pb-1">
-      {(['Turf', 'Grass'] as FieldType[]).map(t => (
-        <button key={t} onClick={() => onChange(t)}
-          className={`flex-1 py-2 rounded-lg font-display text-base font-600 tracking-wide transition-all duration-150 ${
-            value === t ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600 hover:text-navy-100'
-          }`}>
-          {t === 'Turf' ? '🏟 Turf' : '🌿 Grass'}
-        </button>
+    <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto no-scrollbar">
+      <button onClick={() => onChange('all')} className={pill(value === 'all')}>All fields</button>
+      {locations.map(l => (
+        <button key={l.id} onClick={() => onChange(l.id)} className={pill(value === l.id)}>{l.name}</button>
       ))}
     </div>
   )
@@ -148,6 +153,14 @@ function FieldTypeToggle({ value, onChange }: { value: FieldType; onChange: (v: 
 const GRASS: Record<FieldType, [string, string]> = {
   Turf:  ['#14402c', '#1a5037'],
   Grass: ['#1a5220', '#205e27'],
+}
+// Surface may be unset; fall back to the neutral grass palette for the visual.
+function grassColors(type: Surface): [string, string] {
+  return type ? GRASS[type] : ['#1a5220', '#205e27']
+}
+// Display label for an optional surface.
+function surfaceLabel(type: Surface): string {
+  return type ?? 'Unknown'
 }
 
 function sectionH(maxTeams: number) {
@@ -186,7 +199,7 @@ function ChalkDivider() {
 }
 
 // Subtle field markings SVG overlay
-function FieldMarkingsSVG({ totalH, fieldType }: { totalH: number; fieldType: FieldType }) {
+function FieldMarkingsSVG({ totalH, fieldType }: { totalH: number; fieldType: Surface }) {
   const cx = '50%'
   const cy = totalH / 2
   const r = Math.min(totalH * 0.22, 50)
@@ -305,7 +318,7 @@ function FieldPitchCard({
   const open = Math.max(0, slot.maxTeams - filled)
   const h = sectionH(slot.maxTeams)
   const totalH = h * slot.maxTeams + Math.max(0, slot.maxTeams - 1) * 2
-  const [g1, g2] = GRASS[field.type]
+  const [g1, g2] = grassColors(field.type)
 
   const myReservation = selectedTeamId ? slot.reservedTeamIds.includes(selectedTeamId) : false
   const dayBooked = selectedTeamId && reservedDates ? (!myReservation && reservedDates.has(slot.date)) : false
@@ -327,8 +340,10 @@ function FieldPitchCard({
             <span className={`text-[10px] font-display font-700 px-2 py-0.5 rounded uppercase tracking-wider ${
               field.type === 'Turf'
                 ? 'bg-blue-500/12 text-blue-700 border border-blue-500/40'
-                : 'bg-emerald-500/12 text-emerald-700 border border-emerald-500/40'
-            }`}>{field.type}</span>
+                : field.type === 'Grass'
+                ? 'bg-emerald-500/12 text-emerald-700 border border-emerald-500/40'
+                : 'bg-slate-500/12 text-slate-600 border border-slate-400/40'
+            }`}>{surfaceLabel(field.type)}</span>
           </div>
           <p className="text-xs font-medium mt-0.5" style={{ color: '#64748b' }}>
             {location?.name} · {location?.city}
@@ -438,7 +453,7 @@ function ScheduleView({
   weekOffset: number; onWeekChange: (o: number) => void;
   teams: Team[]; locations: Location[]; fields: Field[]; slots: SlotConfig[];
 }) {
-  const [fieldType, setFieldType] = useState<FieldType>('Turf')
+  const [locationId, setLocationId] = useState<string>('all')
 
   const weekDates = getWeekDates(weekOffset)
   const weekDateSet = new Set(weekDates.map(dateToStr))
@@ -447,7 +462,8 @@ function ScheduleView({
   const locationMap = Object.fromEntries(locations.map(l => [l.id, l]))
 
   const weekSlots = slots
-    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId]?.type === fieldType)
+    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId]
+      && (locationId === 'all' || fieldMap[s.fieldId]?.locationId === locationId))
     .sort(compareSlots(fieldMap))
 
   const byDate: Record<string, SlotConfig[]> = {}
@@ -456,11 +472,11 @@ function ScheduleView({
   return (
     <div className="pb-24">
       <WeekNav weekOffset={weekOffset} onChange={onWeekChange} />
-      <FieldTypeToggle value={fieldType} onChange={setFieldType} />
+      <LocationFilter locations={locations} value={locationId} onChange={setLocationId} />
 
       <div className="px-4 space-y-4">
         {Object.keys(byDate).length === 0 ? (
-          <EmptyState icon="📋" message={`No ${fieldType.toLowerCase()} fields configured for this week. Check back or try a different week.`} />
+          <EmptyState icon="📋" message="No fields scheduled for this week. Try a different week or location." />
         ) : (
           Object.entries(byDate).map(([date, dateSlots]) => (
             <div key={date}>
@@ -495,7 +511,7 @@ function ReserveView({
   slots: SlotConfig[]; onReserve: (slotId: string, teamId: string) => Promise<string | null>;
   onCancel: (slotId: string, teamId: string) => Promise<string | null>;
 }) {
-  const [fieldType, setFieldType] = useState<FieldType>('Turf')
+  const [locationId, setLocationId] = useState<string>('all')
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   const weekDates = getWeekDates(weekOffset)
@@ -533,7 +549,8 @@ function ReserveView({
   }
 
   const weekSlots = slots
-    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId]?.type === fieldType)
+    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId]
+      && (locationId === 'all' || fieldMap[s.fieldId]?.locationId === locationId))
     .sort(compareSlots(fieldMap))
 
   const byDate: Record<string, SlotConfig[]> = {}
@@ -581,11 +598,11 @@ function ReserveView({
         )}
       </div>
 
-      <FieldTypeToggle value={fieldType} onChange={setFieldType} />
+      <LocationFilter locations={locations} value={locationId} onChange={setLocationId} />
 
       <div className="px-4 space-y-4">
         {Object.keys(byDate).length === 0 ? (
-          <EmptyState icon="📋" message={`No ${fieldType.toLowerCase()} fields available this week.`} />
+          <EmptyState icon="📋" message="No fields available this week. Try a different week or location." />
         ) : (
           Object.entries(byDate).map(([date, dateSlots]) => (
             <div key={date}>
@@ -628,7 +645,7 @@ interface ResRow {
   day: string        // YYYY-MM-DD (sorts chronologically as a string)
   time: string       // HH:MM start
   field: string
-  fieldType: FieldType
+  fieldType: Surface
   location: string
   team: string       // display label
 }
@@ -794,7 +811,7 @@ function MyFieldsView({
                     <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{timeRangeLabel(r.slot.startTime, r.slot.endTime)}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       <span className="text-navy-100 font-display font-600">{r.field}</span>
-                      <span className="ml-1.5 text-[10px] uppercase tracking-wide text-navy-500">{r.fieldType}</span>
+                      <span className="ml-1.5 text-[10px] uppercase tracking-wide text-navy-500">{surfaceLabel(r.fieldType)}</span>
                     </td>
                     <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{r.location || '—'}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
@@ -859,7 +876,7 @@ function EditReservationModal({
     const loc = locationMap[f.locationId]
     const open = Math.max(0, s.maxTeams - s.reservedTeamIds.length)
     const tag = s.id === row.slot.id ? ' (current)' : open === 0 ? ' (full)' : ` · ${open} open`
-    return `${formatDisplayDate(s.date)} · ${timeRangeLabel(s.startTime, s.endTime)} — ${f.name} (${f.type}), ${loc?.name ?? '—'}${tag}`
+    return `${formatDisplayDate(s.date)} · ${timeRangeLabel(s.startTime, s.endTime)} — ${f.name}, ${loc?.name ?? '—'}${tag}`
   }
 
   const changed = teamId !== row.teamId || slotId !== row.slot.id
@@ -1102,7 +1119,7 @@ function AdminLocations({ locations, refresh }: { locations: Location[]; refresh
 }
 
 function AdminFields({ fields, locations, refresh }: { fields: Field[]; locations: Location[]; refresh: () => Promise<void> }) {
-  const [form, setForm] = useState({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' as FieldType })
+  const [form, setForm] = useState({ locationId: locations[0]?.id ?? '', name: '', type: null as Surface })
   const [editId, setEditId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -1116,7 +1133,7 @@ function AdminFields({ fields, locations, refresh }: { fields: Field[]; location
       else await api.adminCreate('fields', body)
       await refresh()
       setEditId(null)
-      setForm({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' })
+      setForm({ locationId: locations[0]?.id ?? '', name: '', type: null })
     } catch (err) { reportError(err) } finally { setBusy(false) }
   }
 
@@ -1147,14 +1164,14 @@ function AdminFields({ fields, locations, refresh }: { fields: Field[]; location
             </div>
             <div>
               <label className="text-xs text-navy-400 mb-1 block">Surface</label>
-              <select value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as FieldType }))}>
-                <option>Turf</option><option>Grass</option>
+              <select value={form.type ?? ''} onChange={e => setForm(p => ({ ...p, type: (e.target.value || null) as Surface }))}>
+                <option value="">Unknown</option><option value="Turf">Turf</option><option value="Grass">Grass</option>
               </select>
             </div>
           </div>
           <div className="flex gap-2">
             <Btn type="submit" variant="primary" size="sm" disabled={busy}>{editId ? 'Update' : 'Add Field'}</Btn>
-            {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setForm({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' }) }}>Cancel</Btn>}
+            {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setForm({ locationId: locations[0]?.id ?? '', name: '', type: null }) }}>Cancel</Btn>}
           </div>
         </form>
       </Card>
@@ -1165,7 +1182,7 @@ function AdminFields({ fields, locations, refresh }: { fields: Field[]; location
             <div key={f.id} className="flex items-center justify-between bg-navy-800 rounded-lg px-4 py-3 border border-navy-700/50">
               <div>
                 <p className="font-display font-600 text-navy-100">{f.name}</p>
-                <p className="text-xs text-navy-400 flex items-center gap-1.5">{loc?.name} <Chip color={f.type === 'Turf' ? 'blue' : 'green'}>{f.type}</Chip></p>
+                <p className="text-xs text-navy-400 flex items-center gap-1.5">{loc?.name} <Chip color={f.type === 'Turf' ? 'blue' : f.type === 'Grass' ? 'green' : 'gray'}>{surfaceLabel(f.type)}</Chip></p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => startEdit(f)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconEdit /></button>
@@ -1248,7 +1265,7 @@ function AdminSlots({
             <select value={form.fieldId} onChange={e => setForm(p => ({ ...p, fieldId: e.target.value }))}>
               {fields.map(f => {
                 const loc = locationMap[f.locationId]
-                return <option key={f.id} value={f.id}>{loc?.name} — {f.name} ({f.type})</option>
+                return <option key={f.id} value={f.id}>{loc?.name} — {f.name}</option>
               })}
             </select>
           </div>
