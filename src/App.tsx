@@ -109,7 +109,7 @@ const IconUser  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 function WeekNav({ weekOffset, onChange }: { weekOffset: number; onChange: (o: number) => void }) {
   const dates = getWeekDates(weekOffset)
   return (
-    <div className="flex items-center gap-2 px-4 py-3 bg-navy-800 sticky top-[60px] z-20 border-b border-navy-700">
+    <div className="flex items-center gap-2 px-4 py-3 bg-navy-800 sticky top-0 z-20 border-b border-navy-700">
       <button onClick={() => onChange(weekOffset - 1)}
         className="p-1.5 rounded-lg hover:bg-navy-700 text-navy-300 hover:text-navy-100 transition-colors">
         <IconChevronLeft />
@@ -582,13 +582,32 @@ function ReserveView({
           </div>
         )}
 
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
+        <div className={`px-3 py-2 rounded-lg text-xs font-medium ${
           weekReservations.length >= 2 ? 'bg-red-500/10 text-red-700 border border-red-500/30' : 'bg-navy-800 text-navy-400 border border-navy-700'
         }`}>
-          <span className="font-display font-700">{selectedTeamId ? teamLabel(teamMap[selectedTeamId]!) : ''}</span>
-          <span>·</span>
-          <span><strong>{weekReservations.length}</strong>/2 reservations this week</span>
-          {weekReservations.length >= 2 && <span className="text-red-700">— quota reached</span>}
+          <div className="flex items-center gap-2">
+            <span className="font-display font-700">{selectedTeamId ? teamLabel(teamMap[selectedTeamId]!) : ''}</span>
+            <span>·</span>
+            <span><strong>{weekReservations.length}</strong>/2 reservations this week</span>
+            {weekReservations.length >= 2 && <span className="text-red-700">— weekly limit reached (max 2, on different days)</span>}
+          </div>
+          {weekReservations.length > 0 && (
+            <ul className="mt-1.5 space-y-0.5">
+              {[...weekReservations].sort(compareSlots(fieldMap)).map(s => {
+                const f = fieldMap[s.fieldId]
+                return (
+                  <li key={s.id} className="flex items-center gap-1.5 text-navy-300">
+                    <span className="text-cf-green">•</span>
+                    <span>{formatDisplayDate(s.date)}</span>
+                    <span className="text-navy-500">·</span>
+                    <span>{f?.name ?? 'Field'} ({f?.type})</span>
+                    <span className="text-navy-500">·</span>
+                    <span>{timeRangeLabel(s.startTime, s.endTime)}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -640,24 +659,35 @@ function MyFieldsView({
   const weekDateSet = new Set(weekDates.map(dateToStr))
   const fieldMap = Object.fromEntries(fields.map(f => [f.id, f]))
   const locationMap = Object.fromEntries(locations.map(l => [l.id, l]))
+  const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const isAdmin = currentUser.role === 'admin'
   const myTeamIds = new Set(currentUser.teamIds)
+  const [busyKey, setBusyKey] = useState<string | null>(null)
 
-  // Admins aren't assigned specific teams, so "My Fields" becomes an all-teams
-  // overview: every reserved slot for the week. Coaches see only their teams'.
-  const mySlots = slots
-    .filter(s =>
-      weekDateSet.has(s.date) && fieldMap[s.fieldId]
-      && (isAdmin ? s.reservedTeamIds.length > 0 : s.reservedTeamIds.some(id => myTeamIds.has(id)))
-    )
+  // Flatten to one row per reservation (slot × team). Admins see every team's
+  // bookings for the week; coaches see only their assigned teams'.
+  const rows = slots
+    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId])
     .sort(compareSlots(fieldMap))
+    .flatMap(slot =>
+      slot.reservedTeamIds
+        .filter(teamId => isAdmin || myTeamIds.has(teamId))
+        .map(teamId => ({ slot, teamId })),
+    )
+
+  async function cancel(slotId: string, teamId: string) {
+    const key = `${slotId}:${teamId}`
+    if (!confirm('Cancel this reservation?')) return
+    setBusyKey(key)
+    try { await onCancel(slotId, teamId) } finally { setBusyKey(null) }
+  }
 
   return (
     <div className="pb-24">
       <WeekNav weekOffset={weekOffset} onChange={onWeekChange} />
       <div className="px-4 pt-3">
         <SectionTitle>{isAdmin ? 'All Reservations' : 'My Reservations'}</SectionTitle>
-        {mySlots.length === 0 ? (
+        {rows.length === 0 ? (
           <EmptyState
             icon="🗓"
             message={isAdmin
@@ -665,20 +695,46 @@ function MyFieldsView({
               : 'No field reservations for this week. Go to Reserve to book a spot.'}
           />
         ) : (
-          <div className="space-y-4">
-            {mySlots.map(slot => (
-              <FieldPitchCard
-                key={slot.id}
-                slot={slot}
-                field={fieldMap[slot.fieldId]!}
-                location={locationMap[fieldMap[slot.fieldId]?.locationId ?? '']}
-                teams={teams}
-                mode={isAdmin ? 'view' : 'reserve'}
-                myTeamIds={myTeamIds}
-                selectedTeamId={isAdmin ? undefined : currentUser.teamIds.find(id => slot.reservedTeamIds.includes(id))}
-                onCancel={onCancel}
-              />
-            ))}
+          <div className="overflow-x-auto rounded-xl border border-navy-700 bg-navy-800">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-navy-500 border-b border-navy-700">
+                  <th className="px-3 py-2 font-display font-700">Day</th>
+                  <th className="px-3 py-2 font-display font-700">Time</th>
+                  <th className="px-3 py-2 font-display font-700">Field</th>
+                  <th className="px-3 py-2 font-display font-700">Location</th>
+                  <th className="px-3 py-2 font-display font-700">Team</th>
+                  <th className="px-3 py-2 font-display font-700 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ slot, teamId }) => {
+                  const f = fieldMap[slot.fieldId]!
+                  const loc = locationMap[f.locationId]
+                  const team = teamMap[teamId]
+                  const key = `${slot.id}:${teamId}`
+                  return (
+                    <tr key={key} className="border-b border-navy-700/60 last:border-0">
+                      <td className="px-3 py-2.5 text-navy-200 whitespace-nowrap">{formatDisplayDate(slot.date)}</td>
+                      <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{timeRangeLabel(slot.startTime, slot.endTime)}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <span className="text-navy-100 font-display font-600">{f.name}</span>
+                        <span className="ml-1.5 text-[10px] uppercase tracking-wide text-navy-500">{f.type}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{loc?.name ?? '—'}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <span className="font-display font-700 text-cf-green">{team ? teamLabel(team) : teamId}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                        <Btn variant="danger" size="sm" disabled={busyKey === key} onClick={() => cancel(slot.id, teamId)}>
+                          {busyKey === key ? '…' : 'Cancel'}
+                        </Btn>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -707,7 +763,7 @@ function AdminView({
 
   return (
     <div className="pb-24">
-      <div className="sticky top-[60px] z-20 bg-navy-900 border-b border-navy-700">
+      <div className="sticky top-0 z-20 bg-navy-900 border-b border-navy-700">
         <div className="flex overflow-x-auto px-2 py-2 gap-1">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
