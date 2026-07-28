@@ -11,11 +11,11 @@ import * as api from './api'
 
 function Chip({ children, color = 'green' }: { children: ReactNode; color?: 'green' | 'amber' | 'red' | 'navy' | 'blue' }) {
   const cls = {
-    green: 'bg-cf-green/20 text-cf-green border-cf-green/30',
-    amber: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    red:   'bg-red-500/20 text-red-400 border-red-500/30',
-    navy:  'bg-navy-600/60 text-navy-200 border-navy-500/40',
-    blue:  'bg-blue-500/20 text-blue-300 border-blue-500/30',
+    green: 'bg-cf-green/12 text-cf-green border-cf-green/30',
+    amber: 'bg-amber-500/15 text-amber-700 border-amber-500/40',
+    red:   'bg-red-500/12 text-red-700 border-red-500/40',
+    navy:  'bg-navy-700 text-navy-300 border-navy-600',
+    blue:  'bg-blue-500/12 text-blue-700 border-blue-500/40',
   }[color]
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border font-display tracking-wide ${cls}`}>
@@ -34,7 +34,7 @@ function Btn({ children, onClick, variant = 'primary', size = 'md', disabled, ty
     primary:   'bg-cf-green text-navy-950 hover:bg-cf-green-dark active:scale-95',
     secondary: 'bg-navy-700 text-navy-100 border border-navy-600 hover:bg-navy-600 active:scale-95',
     ghost:     'text-navy-300 hover:text-navy-100 hover:bg-navy-700/50 active:scale-95',
-    danger:    'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 active:scale-95',
+    danger:    'bg-red-500/12 text-red-700 border border-red-500/40 hover:bg-red-500/20 active:scale-95',
   }
   return (
     <button type={type} onClick={onClick} disabled={disabled}
@@ -318,19 +318,19 @@ function FieldPitchCard({
   ]
 
   return (
-    <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="rounded-2xl overflow-hidden shadow-lg" style={{ border: '1px solid #e2e8f0' }}>
       {/* Header */}
-      <div className="px-4 py-3 flex items-start justify-between gap-2" style={{ background: '#0d1f36', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="px-4 py-3 flex items-start justify-between gap-2" style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0' }}>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-display text-xl font-800 tracking-wide text-white">{field.name}</span>
+            <span className="font-display text-xl font-800 tracking-wide text-navy-100">{field.name}</span>
             <span className={`text-[10px] font-display font-700 px-2 py-0.5 rounded uppercase tracking-wider ${
               field.type === 'Turf'
-                ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                ? 'bg-blue-500/12 text-blue-700 border border-blue-500/40'
+                : 'bg-emerald-500/12 text-emerald-700 border border-emerald-500/40'
             }`}>{field.type}</span>
           </div>
-          <p className="text-xs font-medium mt-0.5" style={{ color: 'rgba(148,163,184,0.8)' }}>
+          <p className="text-xs font-medium mt-0.5" style={{ color: '#64748b' }}>
             {location?.name} · {location?.city}
           </p>
           <p className="text-xs font-display font-600 tracking-wide mt-0.5 text-cf-green">
@@ -339,12 +339,12 @@ function FieldPitchCard({
         </div>
         <div className="text-right flex-shrink-0">
           {open === 0
-            ? <div className="font-display text-xs font-800 tracking-widest text-red-400">FULL</div>
+            ? <div className="font-display text-xs font-800 tracking-widest text-red-600">FULL</div>
             : open === 1
-            ? <div className="font-display text-xs font-800 tracking-widest text-amber-400">1 OPEN</div>
+            ? <div className="font-display text-xs font-800 tracking-widest text-amber-600">1 OPEN</div>
             : <div className="font-display text-xs font-800 tracking-widest text-cf-green">{open} OPEN</div>
           }
-          <div className="font-display text-xs font-500 mt-0.5" style={{ color: 'rgba(148,163,184,0.6)' }}>
+          <div className="font-display text-xs font-500 mt-0.5" style={{ color: '#94a3b8' }}>
             {filled}/{slot.maxTeams} spots
           </div>
           {myReservation && (
@@ -389,7 +389,7 @@ function FieldPitchCard({
       {mode === 'reserve' && (
         <div
           className="px-4 py-2.5 flex items-center justify-between"
-          style={{ background: '#0d1f36', borderTop: '1px solid rgba(255,255,255,0.07)' }}
+          style={{ background: '#ffffff', borderTop: '1px solid #e2e8f0' }}
         >
           {myReservation ? (
             <>
@@ -399,13 +399,13 @@ function FieldPitchCard({
               </Btn>
             </>
           ) : dayBooked ? (
-            <span className="text-xs text-amber-400">Already booked a field on this day</span>
+            <span className="text-xs text-amber-700">Already booked a field on this day</span>
           ) : weekFull ? (
-            <span className="text-xs text-red-400">Week limit reached (max 2 per week)</span>
+            <span className="text-xs text-red-700">Week limit reached (max 2 per week)</span>
           ) : open === 0 ? (
-            <span className="text-xs text-red-400">All slots taken for this day</span>
+            <span className="text-xs text-red-700">All slots taken for this day</span>
           ) : (
-            <span className="text-xs" style={{ color: 'rgba(100,130,160,0.9)' }}>
+            <span className="text-xs" style={{ color: '#64748b' }}>
               Tap an open section to claim your spot
             </span>
           )}
@@ -572,12 +572,12 @@ function ReserveView({
         )}
 
         <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
-          weekReservations.length >= 2 ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-navy-800 text-navy-400 border border-navy-700'
+          weekReservations.length >= 2 ? 'bg-red-500/10 text-red-700 border border-red-500/30' : 'bg-navy-800 text-navy-400 border border-navy-700'
         }`}>
           <span className="font-display font-700">{selectedTeamId ? teamLabel(teamMap[selectedTeamId]!) : ''}</span>
           <span>·</span>
           <span><strong>{weekReservations.length}</strong>/2 reservations this week</span>
-          {weekReservations.length >= 2 && <span className="text-red-400">— quota reached</span>}
+          {weekReservations.length >= 2 && <span className="text-red-700">— quota reached</span>}
         </div>
       </div>
 
@@ -1242,7 +1242,7 @@ function AuthModal({ onClose, onLogin }: {
       <div className="bg-navy-800 w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-navy-600/50 shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-navy-700">
-          <h2 className="font-display text-xl font-800 tracking-wide text-white">{mode === 'login' ? 'Sign In' : 'Create Account'}</h2>
+          <h2 className="font-display text-xl font-800 tracking-wide text-navy-100">{mode === 'login' ? 'Sign In' : 'Create Account'}</h2>
           <button onClick={onClose} className="text-navy-400 hover:text-navy-100 transition-colors p-1 rounded hover:bg-navy-700"><IconX /></button>
         </div>
 
@@ -1258,7 +1258,7 @@ function AuthModal({ onClose, onLogin }: {
         </div>
 
         <div className="px-6 pb-6 overflow-y-auto max-h-[80vh]">
-          {error && <p className="text-red-400 text-sm bg-red-500/10 rounded-lg px-3 py-2 mt-3 mb-1">{error}</p>}
+          {error && <p className="text-red-700 text-sm bg-red-500/10 rounded-lg px-3 py-2 mt-3 mb-1">{error}</p>}
           {notice && <p className="text-cf-green text-sm bg-cf-green/10 rounded-lg px-3 py-2 mt-3 mb-1">{notice}</p>}
 
           {mode === 'login' ? (
