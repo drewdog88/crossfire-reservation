@@ -2,101 +2,10 @@ import { useState, useEffect } from 'react'
 import type { ReactNode, FormEvent } from 'react'
 import {
   type Team, type Location, type Field, type SlotConfig, type User,
-  type View, type AdminTab, type Gender, type Level, type FieldType, type UserRole,
+  type View, type AdminTab, type Gender, type FieldType, type UserRole,
   teamLabel, dateToStr, getWeekDates, weekRangeLabel, formatDisplayDate, timeRangeLabel,
 } from './types'
-
-// ─── Seed Data ──────────────────────────────────────────────────────────────
-
-const SEED_TEAMS: Team[] = [
-  { id: 't1',  gender: 'Boys',  birthYear: 2011, level: 'A' },
-  { id: 't2',  gender: 'Boys',  birthYear: 2012, level: 'A' },
-  { id: 't3',  gender: 'Boys',  birthYear: 2012, level: 'B' },
-  { id: 't4',  gender: 'Boys',  birthYear: 2013, level: 'A' },
-  { id: 't5',  gender: 'Boys',  birthYear: 2013, level: 'B' },
-  { id: 't6',  gender: 'Boys',  birthYear: 2014, level: 'A' },
-  { id: 't7',  gender: 'Girls', birthYear: 2011, level: 'A' },
-  { id: 't8',  gender: 'Girls', birthYear: 2012, level: 'A' },
-  { id: 't9',  gender: 'Girls', birthYear: 2012, level: 'B' },
-  { id: 't10', gender: 'Girls', birthYear: 2013, level: 'A' },
-  { id: 't11', gender: 'Girls', birthYear: 2013, level: 'B' },
-  { id: 't12', gender: 'Boys',  birthYear: 2014, level: 'B' },
-]
-
-const SEED_LOCATIONS: Location[] = [
-  { id: 'l1', name: 'Marymoor Park',           city: 'Redmond, WA' },
-  { id: 'l2', name: 'Starfire Sports Complex', city: 'Tukwila, WA' },
-  { id: 'l3', name: 'Kent Memorial Park',      city: 'Kent, WA' },
-  { id: 'l4', name: 'Bellevue Youth Soccer',   city: 'Bellevue, WA' },
-]
-
-const SEED_FIELDS: Field[] = [
-  { id: 'f1', locationId: 'l1', name: 'Field 1',      type: 'Turf' },
-  { id: 'f2', locationId: 'l1', name: 'Field 2',      type: 'Turf' },
-  { id: 'f3', locationId: 'l1', name: 'Field 3',      type: 'Grass' },
-  { id: 'f4', locationId: 'l2', name: 'Field A',      type: 'Turf' },
-  { id: 'f5', locationId: 'l2', name: 'Field B',      type: 'Grass' },
-  { id: 'f6', locationId: 'l3', name: 'Main Field',   type: 'Grass' },
-  { id: 'f7', locationId: 'l4', name: 'North Field',  type: 'Turf' },
-  { id: 'f8', locationId: 'l4', name: 'South Field',  type: 'Grass' },
-]
-
-function buildSeedSlots(): SlotConfig[] {
-  const today = new Date()
-  const dow = today.getDay()
-  const mon = new Date(today)
-  mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + 7)
-  mon.setHours(0, 0, 0, 0)
-  const d = (offset: number) => {
-    const x = new Date(mon); x.setDate(mon.getDate() + offset); return dateToStr(x)
-  }
-  const EVENING = { startTime: '17:30', endTime: '19:00' }
-  const LATE    = { startTime: '19:00', endTime: '20:30' }
-  return [
-    { id: 's1',  fieldId: 'f1', date: d(0), ...EVENING, maxTeams: 4, reservedTeamIds: ['t2','t7'] },
-    { id: 's2',  fieldId: 'f1', date: d(2), ...EVENING, maxTeams: 4, reservedTeamIds: ['t1'] },
-    { id: 's3',  fieldId: 'f1', date: d(5), ...EVENING, maxTeams: 6, reservedTeamIds: ['t8','t9','t3'] },
-    { id: 's4',  fieldId: 'f2', date: d(1), ...EVENING, maxTeams: 6, reservedTeamIds: ['t4','t5'] },
-    { id: 's5',  fieldId: 'f2', date: d(4), ...EVENING, maxTeams: 6, reservedTeamIds: ['t1','t2','t3','t7','t8','t10'] },
-    { id: 's6',  fieldId: 'f2', date: d(5), ...EVENING, maxTeams: 4, reservedTeamIds: [] },
-    { id: 's7',  fieldId: 'f3', date: d(0), ...EVENING, maxTeams: 3, reservedTeamIds: ['t11'] },
-    { id: 's8',  fieldId: 'f3', date: d(3), ...EVENING, maxTeams: 3, reservedTeamIds: [] },
-    { id: 's9',  fieldId: 'f3', date: d(5), ...EVENING, maxTeams: 3, reservedTeamIds: ['t6','t12'] },
-    { id: 's10', fieldId: 'f4', date: d(0), ...EVENING, maxTeams: 5, reservedTeamIds: ['t10'] },
-    { id: 's11', fieldId: 'f4', date: d(2), ...EVENING, maxTeams: 5, reservedTeamIds: [] },
-    { id: 's12', fieldId: 'f4', date: d(4), ...EVENING, maxTeams: 8, reservedTeamIds: ['t4','t6'] },
-    // Same field + day, second time window — the case the flat model couldn't represent
-    { id: 's12b',fieldId: 'f4', date: d(4), ...LATE,    maxTeams: 6, reservedTeamIds: ['t7'] },
-    { id: 's13', fieldId: 'f5', date: d(1), ...EVENING, maxTeams: 4, reservedTeamIds: [] },
-    { id: 's14', fieldId: 'f5', date: d(5), ...EVENING, maxTeams: 4, reservedTeamIds: ['t5'] },
-    { id: 's14b',fieldId: 'f5', date: d(5), ...LATE,    maxTeams: 4, reservedTeamIds: [] },
-    { id: 's15', fieldId: 'f6', date: d(3), ...EVENING, maxTeams: 6, reservedTeamIds: ['t7','t8'] },
-    { id: 's16', fieldId: 'f6', date: d(5), ...EVENING, maxTeams: 6, reservedTeamIds: ['t9','t11','t12'] },
-    { id: 's17', fieldId: 'f7', date: d(0), ...EVENING, maxTeams: 8, reservedTeamIds: ['t2','t3'] },
-    { id: 's18', fieldId: 'f7', date: d(2), ...EVENING, maxTeams: 8, reservedTeamIds: [] },
-    { id: 's19', fieldId: 'f7', date: d(4), ...EVENING, maxTeams: 8, reservedTeamIds: [] },
-    { id: 's20', fieldId: 'f7', date: d(6), ...EVENING, maxTeams: 8, reservedTeamIds: ['t1'] },
-    { id: 's21', fieldId: 'f8', date: d(1), ...EVENING, maxTeams: 4, reservedTeamIds: [] },
-    { id: 's22', fieldId: 'f8', date: d(5), ...EVENING, maxTeams: 4, reservedTeamIds: ['t10','t11'] },
-  ]
-}
-
-const SEED_USERS: User[] = [
-  { id: 'u1', firstName: 'Hugo',   lastName: 'Martinez',  email: 'hugo@crossfireselect.com',  password: 'admin123', role: 'admin', teamIds: [] },
-  { id: 'u2', firstName: 'Meghan', lastName: 'Thompson',  email: 'meghan@crossfireselect.com', password: 'admin123', role: 'admin', teamIds: [] },
-  { id: 'u3', firstName: 'Sean',   lastName: 'Patterson', email: 'sean@crossfireselect.com',  password: 'coach123', role: 'coach', teamIds: ['t3'] },
-  { id: 'u4', firstName: 'Maria',  lastName: 'Chen',      email: 'maria@crossfireselect.com', password: 'coach123', role: 'coach', teamIds: ['t8','t9'] },
-  { id: 'u5', firstName: 'David',  lastName: 'Kim',       email: 'david@crossfireselect.com', password: 'coach123', role: 'coach', teamIds: ['t2'] },
-]
-
-// ─── Local Storage ───────────────────────────────────────────────────────────
-
-function load<T>(key: string, fallback: T): T {
-  try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback } catch { return fallback }
-}
-function save(key: string, val: unknown) {
-  try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
-}
+import * as api from './api'
 
 // ─── Shared UI ───────────────────────────────────────────────────────────────
 
@@ -191,7 +100,6 @@ const IconSettings = () => (
 const IconChevronLeft  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5"><path d="M15 18l-6-6 6-6" /></svg>
 const IconChevronRight = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5"><path d="M9 18l6-6-6-6" /></svg>
 const IconX     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}    className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12" /></svg>
-const IconPlus  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}    className="w-4 h-4"><path d="M12 5v14M5 12h14" /></svg>
 const IconTrash = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path d="M3 6h18M19 6l-1 14H6L5 6M9 6V4h6v2" /></svg>
 const IconEdit  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
 const IconUser  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
@@ -582,8 +490,8 @@ function ReserveView({
 }: {
   weekOffset: number; onWeekChange: (o: number) => void;
   currentUser: User; teams: Team[]; locations: Location[]; fields: Field[];
-  slots: SlotConfig[]; onReserve: (slotId: string, teamId: string) => string | null;
-  onCancel: (slotId: string, teamId: string) => void;
+  slots: SlotConfig[]; onReserve: (slotId: string, teamId: string) => Promise<string | null>;
+  onCancel: (slotId: string, teamId: string) => Promise<string | null>;
 }) {
   const [fieldType, setFieldType] = useState<FieldType>('Turf')
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser.teamIds[0] ?? '')
@@ -605,15 +513,16 @@ function ReserveView({
     setTimeout(() => setToast(null), 3000)
   }
 
-  function handleReserve(slotId: string) {
-    const err = onReserve(slotId, selectedTeamId)
+  async function handleReserve(slotId: string) {
+    const err = await onReserve(slotId, selectedTeamId)
     if (err) showToast(err, false)
     else showToast('Spot reserved! 🎉', true)
   }
 
-  function handleCancel(slotId: string, teamId: string) {
-    onCancel(slotId, teamId)
-    showToast('Reservation cancelled.', true)
+  async function handleCancel(slotId: string, teamId: string) {
+    const err = await onCancel(slotId, teamId)
+    if (err) showToast(err, false)
+    else showToast('Reservation cancelled.', true)
   }
 
   const weekSlots = slots
@@ -714,7 +623,7 @@ function MyFieldsView({
 }: {
   weekOffset: number; onWeekChange: (o: number) => void;
   currentUser: User; teams: Team[]; fields: Field[]; locations: Location[];
-  slots: SlotConfig[]; onCancel: (slotId: string, teamId: string) => void;
+  slots: SlotConfig[]; onCancel: (slotId: string, teamId: string) => Promise<string | null>;
 }) {
   const weekDates = getWeekDates(weekOffset)
   const weekDateSet = new Set(weekDates.map(dateToStr))
@@ -758,14 +667,10 @@ function MyFieldsView({
 // ─── Admin View ───────────────────────────────────────────────────────────────
 
 function AdminView({
-  teams, setTeams, locations, setLocations, fields, setFields,
-  slots, setSlots, users, setUsers, weekOffset, onWeekChange,
+  teams, locations, fields, slots, users, refresh, weekOffset, onWeekChange,
 }: {
-  teams: Team[]; setTeams: (t: Team[]) => void;
-  locations: Location[]; setLocations: (l: Location[]) => void;
-  fields: Field[]; setFields: (f: Field[]) => void;
-  slots: SlotConfig[]; setSlots: (s: SlotConfig[]) => void;
-  users: User[]; setUsers: (u: User[]) => void;
+  teams: Team[]; locations: Location[]; fields: Field[];
+  slots: SlotConfig[]; users: User[]; refresh: () => Promise<void>;
   weekOffset: number; onWeekChange: (o: number) => void;
 }) {
   const [tab, setTab] = useState<AdminTab>('teams')
@@ -776,67 +681,65 @@ function AdminView({
     { id: 'slots',     label: 'Slots' },
     { id: 'users',     label: 'Users' },
   ]
+  const pending = users.filter(u => u.status === 'pending').length
 
-  // Cascade deletes so no dangling references survive (ghost reservations, orphan fields/slots).
-  function deleteTeam(id: string) {
-    setTeams(teams.filter(t => t.id !== id))
-    setSlots(slots.map(s => s.reservedTeamIds.includes(id) ? { ...s, reservedTeamIds: s.reservedTeamIds.filter(x => x !== id) } : s))
-    setUsers(users.map(u => u.teamIds.includes(id) ? { ...u, teamIds: u.teamIds.filter(x => x !== id) } : u))
-  }
-  function deleteLocation(id: string) {
-    const orphanedFieldIds = new Set(fields.filter(f => f.locationId === id).map(f => f.id))
-    setLocations(locations.filter(l => l.id !== id))
-    setFields(fields.filter(f => f.locationId !== id))
-    setSlots(slots.filter(s => !orphanedFieldIds.has(s.fieldId)))
-  }
-  function deleteField(id: string) {
-    setFields(fields.filter(f => f.id !== id))
-    setSlots(slots.filter(s => s.fieldId !== id))
-  }
   return (
     <div className="pb-24">
       <div className="sticky top-[60px] z-20 bg-navy-900 border-b border-navy-700">
         <div className="flex overflow-x-auto px-2 py-2 gap-1">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-shrink-0 px-4 py-1.5 rounded-lg font-display font-700 text-sm tracking-wide transition-all whitespace-nowrap ${
+              className={`relative flex-shrink-0 px-4 py-1.5 rounded-lg font-display font-700 text-sm tracking-wide transition-all whitespace-nowrap ${
                 tab === t.id ? 'bg-cf-green text-navy-950' : 'text-navy-400 hover:text-navy-200 hover:bg-navy-700'
               }`}>
               {t.label}
+              {t.id === 'users' && pending > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-navy-950 text-[10px] font-800">{pending}</span>
+              )}
             </button>
           ))}
         </div>
       </div>
       <div className="px-4 pt-4">
-        {tab === 'teams'     && <AdminTeams teams={teams} setTeams={setTeams} onDelete={deleteTeam} />}
-        {tab === 'locations' && <AdminLocations locations={locations} setLocations={setLocations} onDelete={deleteLocation} />}
-        {tab === 'fields'    && <AdminFields fields={fields} setFields={setFields} locations={locations} onDelete={deleteField} />}
-        {tab === 'slots'     && <AdminSlots slots={slots} setSlots={setSlots} fields={fields} locations={locations} weekOffset={weekOffset} onWeekChange={onWeekChange} teams={teams} />}
-        {tab === 'users'     && <AdminUsers users={users} setUsers={setUsers} teams={teams} />}
+        {tab === 'teams'     && <AdminTeams teams={teams} refresh={refresh} />}
+        {tab === 'locations' && <AdminLocations locations={locations} refresh={refresh} />}
+        {tab === 'fields'    && <AdminFields fields={fields} locations={locations} refresh={refresh} />}
+        {tab === 'slots'     && <AdminSlots slots={slots} fields={fields} locations={locations} weekOffset={weekOffset} onWeekChange={onWeekChange} teams={teams} refresh={refresh} />}
+        {tab === 'users'     && <AdminUsers users={users} teams={teams} refresh={refresh} />}
       </div>
     </div>
   )
 }
 
-function uid() { return Math.random().toString(36).slice(2, 10) }
+// Surface a failed admin mutation without a fragile inline toast — a plain alert is enough for MVP.
+function reportError(err: unknown) {
+  alert(err instanceof Error ? err.message : 'Something went wrong.')
+}
 
-function AdminTeams({ teams, setTeams, onDelete }: { teams: Team[]; setTeams: (t: Team[]) => void; onDelete: (id: string) => void }) {
-  const [form, setForm] = useState<Partial<Team>>({ gender: 'Boys', level: 'A' })
+function AdminTeams({ teams, refresh }: { teams: Team[]; refresh: () => Promise<void> }) {
+  const [form, setForm] = useState<{ gender: Gender; birthYear?: number; level: string; coachName: string }>({ gender: 'Boys', level: 'A', coachName: '' })
   const [editId, setEditId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  function save(e: FormEvent) {
+  async function save(e: FormEvent) {
     e.preventDefault()
     if (!form.gender || !form.birthYear || !form.level) return
-    if (editId) {
-      setTeams(teams.map(t => t.id === editId ? { ...t, ...form } as Team : t))
+    setBusy(true)
+    try {
+      const body = { gender: form.gender, birthYear: form.birthYear, level: form.level, coachName: form.coachName.trim() || null }
+      if (editId) await api.adminUpdate('teams', { id: editId, ...body })
+      else await api.adminCreate('teams', body)
+      await refresh()
       setEditId(null)
-    } else {
-      setTeams([...teams, { id: uid(), gender: form.gender!, birthYear: form.birthYear!, level: form.level! }])
-    }
-    setForm({ gender: 'Boys', level: 'A' })
+      setForm({ gender: 'Boys', level: 'A', coachName: '' })
+    } catch (err) { reportError(err) } finally { setBusy(false) }
   }
 
-  function startEdit(t: Team) { setEditId(t.id); setForm(t) }
+  function startEdit(t: Team) { setEditId(t.id); setForm({ gender: t.gender, birthYear: t.birthYear, level: t.level, coachName: t.coachName ?? '' }) }
+  async function onDelete(id: string) {
+    if (!confirm('Delete this team? Its reservations will be removed.')) return
+    try { await api.adminDelete('teams', id); await refresh() } catch (err) { reportError(err) }
+  }
 
   return (
     <div className="space-y-4">
@@ -857,22 +760,29 @@ function AdminTeams({ teams, setTeams, onDelete }: { teams: Team[]; setTeams: (t
                 onChange={e => setForm(p => ({ ...p, birthYear: Number(e.target.value) }))} required />
             </div>
           </div>
-          <div>
-            <label className="text-xs text-navy-400 mb-1 block">Level</label>
-            <select value={form.level} onChange={e => setForm(p => ({ ...p, level: e.target.value as Level }))}>
-              {(['A','B','C','D'] as Level[]).map(l => <option key={l}>{l}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-navy-400 mb-1 block">Level</label>
+              <input placeholder="e.g. A, B, 8th Graders" value={form.level} onChange={e => setForm(p => ({ ...p, level: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="text-xs text-navy-400 mb-1 block">Coach (optional)</label>
+              <input placeholder="e.g. Nancy" value={form.coachName} onChange={e => setForm(p => ({ ...p, coachName: e.target.value }))} />
+            </div>
           </div>
           <div className="flex gap-2">
-            <Btn type="submit" variant="primary" size="sm">{editId ? 'Update' : 'Add Team'}</Btn>
-            {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setForm({ gender: 'Boys', level: 'A' }) }}>Cancel</Btn>}
+            <Btn type="submit" variant="primary" size="sm" disabled={busy}>{editId ? 'Update' : 'Add Team'}</Btn>
+            {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setForm({ gender: 'Boys', level: 'A', coachName: '' }) }}>Cancel</Btn>}
           </div>
         </form>
       </Card>
       <div className="space-y-2">
         {[...teams].sort((a, b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
           <div key={t.id} className="flex items-center justify-between bg-navy-800 rounded-lg px-4 py-3 border border-navy-700/50">
-            <span className="font-display text-base font-700 text-navy-100">{teamLabel(t)}</span>
+            <div>
+              <span className="font-display text-base font-700 text-navy-100">{teamLabel(t)}</span>
+              {t.coachName && <span className="text-xs text-navy-400 ml-2">Coach {t.coachName}</span>}
+            </div>
             <div className="flex gap-2">
               <button onClick={() => startEdit(t)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconEdit /></button>
               <button onClick={() => onDelete(t.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
@@ -884,23 +794,30 @@ function AdminTeams({ teams, setTeams, onDelete }: { teams: Team[]; setTeams: (t
   )
 }
 
-function AdminLocations({ locations, setLocations, onDelete }: { locations: Location[]; setLocations: (l: Location[]) => void; onDelete: (id: string) => void }) {
+function AdminLocations({ locations, refresh }: { locations: Location[]; refresh: () => Promise<void> }) {
   const [form, setForm] = useState({ name: '', city: '' })
   const [editId, setEditId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  function save(e: FormEvent) {
+  async function save(e: FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) return
-    if (editId) {
-      setLocations(locations.map(l => l.id === editId ? { ...l, ...form } : l))
+    setBusy(true)
+    try {
+      const body = { name: form.name.trim(), city: form.city.trim() || null }
+      if (editId) await api.adminUpdate('locations', { id: editId, ...body })
+      else await api.adminCreate('locations', body)
+      await refresh()
       setEditId(null)
-    } else {
-      setLocations([...locations, { id: uid(), name: form.name.trim(), city: form.city.trim() }])
-    }
-    setForm({ name: '', city: '' })
+      setForm({ name: '', city: '' })
+    } catch (err) { reportError(err) } finally { setBusy(false) }
   }
 
-  function startEdit(l: Location) { setEditId(l.id); setForm({ name: l.name, city: l.city }) }
+  function startEdit(l: Location) { setEditId(l.id); setForm({ name: l.name, city: l.city ?? '' }) }
+  async function onDelete(id: string) {
+    if (!confirm('Delete this location? Its fields and slots will be removed.')) return
+    try { await api.adminDelete('locations', id); await refresh() } catch (err) { reportError(err) }
+  }
 
   return (
     <div className="space-y-4">
@@ -910,14 +827,14 @@ function AdminLocations({ locations, setLocations, onDelete }: { locations: Loca
         <form onSubmit={save} className="space-y-3">
           <div>
             <label className="text-xs text-navy-400 mb-1 block">Name</label>
-            <input placeholder="e.g. Marymoor Park" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+            <input placeholder="e.g. 60 Acres" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
           </div>
           <div>
             <label className="text-xs text-navy-400 mb-1 block">City</label>
             <input placeholder="e.g. Redmond, WA" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} />
           </div>
           <div className="flex gap-2">
-            <Btn type="submit" variant="primary" size="sm">{editId ? 'Update' : 'Add Location'}</Btn>
+            <Btn type="submit" variant="primary" size="sm" disabled={busy}>{editId ? 'Update' : 'Add Location'}</Btn>
             {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setForm({ name: '', city: '' }) }}>Cancel</Btn>}
           </div>
         </form>
@@ -940,23 +857,30 @@ function AdminLocations({ locations, setLocations, onDelete }: { locations: Loca
   )
 }
 
-function AdminFields({ fields, setFields, locations, onDelete }: { fields: Field[]; setFields: (f: Field[]) => void; locations: Location[]; onDelete: (id: string) => void }) {
+function AdminFields({ fields, locations, refresh }: { fields: Field[]; locations: Location[]; refresh: () => Promise<void> }) {
   const [form, setForm] = useState({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' as FieldType })
   const [editId, setEditId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  function save(e: FormEvent) {
+  async function save(e: FormEvent) {
     e.preventDefault()
     if (!form.name.trim() || !form.locationId) return
-    if (editId) {
-      setFields(fields.map(f => f.id === editId ? { ...f, ...form, name: form.name.trim() } : f))
+    setBusy(true)
+    try {
+      const body = { locationId: form.locationId, name: form.name.trim(), type: form.type }
+      if (editId) await api.adminUpdate('fields', { id: editId, ...body })
+      else await api.adminCreate('fields', body)
+      await refresh()
       setEditId(null)
-    } else {
-      setFields([...fields, { id: uid(), locationId: form.locationId, name: form.name.trim(), type: form.type }])
-    }
-    setForm({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' })
+      setForm({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' })
+    } catch (err) { reportError(err) } finally { setBusy(false) }
   }
 
   function startEdit(f: Field) { setEditId(f.id); setForm({ locationId: f.locationId, name: f.name, type: f.type }) }
+  async function onDelete(id: string) {
+    if (!confirm('Delete this field? Its slots will be removed.')) return
+    try { await api.adminDelete('fields', id); await refresh() } catch (err) { reportError(err) }
+  }
 
   const locationMap = Object.fromEntries(locations.map(l => [l.id, l]))
 
@@ -985,7 +909,7 @@ function AdminFields({ fields, setFields, locations, onDelete }: { fields: Field
             </div>
           </div>
           <div className="flex gap-2">
-            <Btn type="submit" variant="primary" size="sm">{editId ? 'Update' : 'Add Field'}</Btn>
+            <Btn type="submit" variant="primary" size="sm" disabled={busy}>{editId ? 'Update' : 'Add Field'}</Btn>
             {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setForm({ locationId: locations[0]?.id ?? '', name: '', type: 'Turf' }) }}>Cancel</Btn>}
           </div>
         </form>
@@ -1012,12 +936,11 @@ function AdminFields({ fields, setFields, locations, onDelete }: { fields: Field
 }
 
 function AdminSlots({
-  slots, setSlots, fields, locations, weekOffset, onWeekChange, teams,
+  slots, fields, locations, weekOffset, onWeekChange, teams, refresh,
 }: {
-  slots: SlotConfig[]; setSlots: (s: SlotConfig[]) => void;
-  fields: Field[]; locations: Location[];
+  slots: SlotConfig[]; fields: Field[]; locations: Location[];
   weekOffset: number; onWeekChange: (o: number) => void;
-  teams: Team[];
+  teams: Team[]; refresh: () => Promise<void>;
 }) {
   const [form, setForm] = useState({ fieldId: fields[0]?.id ?? '', date: '', startTime: '17:30', endTime: '19:00', maxTeams: 4 })
 
@@ -1031,35 +954,41 @@ function AdminSlots({
     .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId])
     .sort(compareSlots(fieldMap))
 
-  function addSlot(e: FormEvent) {
+  async function addSlot(e: FormEvent) {
     e.preventDefault()
     if (!form.fieldId || !form.date || !form.startTime || !form.endTime) return
     if (form.endTime <= form.startTime) { alert('End time must be after start time.'); return }
     const dup = slots.find(s => s.fieldId === form.fieldId && s.date === form.date && s.startTime === form.startTime)
     if (dup) { alert('A slot for this field, date, and start time already exists.'); return }
-    setSlots([...slots, { id: uid(), fieldId: form.fieldId, date: form.date, startTime: form.startTime, endTime: form.endTime, maxTeams: form.maxTeams, reservedTeamIds: [] }])
-    setForm(p => ({ ...p, date: '' }))
+    try {
+      await api.adminCreate('slots', { fieldId: form.fieldId, date: form.date, startTime: form.startTime, endTime: form.endTime, maxTeams: form.maxTeams })
+      await refresh()
+      setForm(p => ({ ...p, date: '' }))
+    } catch (err) { reportError(err) }
   }
 
-  function delSlot(id: string) { setSlots(slots.filter(s => s.id !== id)) }
-
-  function updateMax(slotId: string, val: number) {
-    setSlots(slots.map(s => {
-      if (s.id !== slotId) return s
-      // Floor cannot drop below teams already reserved, or the schedule views crash on a negative "open" count
-      const floor = Math.max(1, s.reservedTeamIds.length)
-      return { ...s, maxTeams: Math.max(floor, Math.min(8, val)) }
-    }))
+  async function delSlot(id: string) {
+    if (!confirm('Delete this slot? Its reservations will be removed.')) return
+    try { await api.adminDelete('slots', id); await refresh() } catch (err) { reportError(err) }
   }
 
-  function removeTeam(slotId: string, teamId: string) {
-    setSlots(slots.map(s => s.id === slotId ? { ...s, reservedTeamIds: s.reservedTeamIds.filter(id => id !== teamId) } : s))
+  async function updateMax(slot: SlotConfig, val: number) {
+    // Floor cannot drop below teams already reserved, or the schedule views crash on a negative "open" count
+    const floor = Math.max(1, slot.reservedTeamIds.length)
+    const maxTeams = Math.max(floor, Math.min(8, val))
+    if (maxTeams === slot.maxTeams) return
+    try {
+      await api.adminUpdate('slots', { id: slot.id, fieldId: slot.fieldId, date: slot.date, startTime: slot.startTime, endTime: slot.endTime, maxTeams })
+      await refresh()
+    } catch (err) { reportError(err) }
   }
 
-  function addTeam(slotId: string, teamId: string) {
-    const slot = slots.find(s => s.id === slotId)
-    if (!slot || slot.reservedTeamIds.includes(teamId) || slot.reservedTeamIds.length >= slot.maxTeams) return
-    setSlots(slots.map(s => s.id === slotId ? { ...s, reservedTeamIds: [...s.reservedTeamIds, teamId] } : s))
+  // Admin overrides go through the reservations endpoint (admins may act on any team).
+  async function removeTeam(slotId: string, teamId: string) {
+    try { await api.cancel(slotId, teamId); await refresh() } catch (err) { reportError(err) }
+  }
+  async function addTeam(slotId: string, teamId: string) {
+    try { await api.reserve(slotId, teamId); await refresh() } catch (err) { reportError(err) }
   }
 
   return (
@@ -1122,10 +1051,10 @@ function AdminSlots({
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-navy-400 w-20 flex-shrink-0">Max Teams:</span>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => updateMax(slot.id, slot.maxTeams - 1)}
+                      <button onClick={() => updateMax(slot, slot.maxTeams - 1)}
                         className="w-7 h-7 rounded bg-navy-700 text-navy-200 flex items-center justify-center hover:bg-navy-600 transition-colors font-bold">−</button>
                       <span className="font-display font-700 text-navy-100 w-4 text-center">{slot.maxTeams}</span>
-                      <button onClick={() => updateMax(slot.id, slot.maxTeams + 1)}
+                      <button onClick={() => updateMax(slot, slot.maxTeams + 1)}
                         className="w-7 h-7 rounded bg-navy-700 text-navy-200 flex items-center justify-center hover:bg-navy-600 transition-colors font-bold">+</button>
                     </div>
                     <div className="flex-1">
@@ -1173,97 +1102,98 @@ function AdminSlots({
   )
 }
 
-function AdminUsers({ users, setUsers, teams }: { users: User[]; setUsers: (u: User[]) => void; teams: Team[] }) {
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'coach' as UserRole, teamIds: [] as string[] })
+function AdminUsers({ users, teams, refresh }: { users: User[]; teams: Team[]; refresh: () => Promise<void> }) {
   const [editId, setEditId] = useState<string | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
-
-  function save(e: FormEvent) {
-    e.preventDefault()
-    if (!form.email.trim() || !form.firstName.trim()) return
-    if (editId) {
-      setUsers(users.map(u => u.id === editId ? { ...u, ...form } : u))
-      setEditId(null)
-    } else {
-      if (!form.password.trim()) return
-      setUsers([...users, { id: uid(), ...form }])
-      setShowAdd(false)
-    }
-    setForm({ firstName: '', lastName: '', email: '', password: '', role: 'coach', teamIds: [] })
-  }
-
-  function startEdit(u: User) {
-    setEditId(u.id)
-    setForm({ firstName: u.firstName, lastName: u.lastName, email: u.email, password: u.password, role: u.role, teamIds: u.teamIds })
-    setShowAdd(true)
-  }
-
-  function del(id: string) { setUsers(users.filter(u => u.id !== id)) }
-  function toggleTeam(id: string) { setForm(p => ({ ...p, teamIds: p.teamIds.includes(id) ? p.teamIds.filter(x => x !== id) : [...p.teamIds, id] })) }
+  const [draftTeamIds, setDraftTeamIds] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <SectionTitle>Manage Users</SectionTitle>
-        {!showAdd && <Btn variant="primary" size="sm" onClick={() => setShowAdd(true)}><IconPlus />&nbsp;Add User</Btn>}
-      </div>
-      {showAdd && (
-        <Card className="p-4">
-          <h4 className="font-display text-base font-600 text-navy-200 mb-3">{editId ? 'Edit User' : 'Add User'}</h4>
-          <form onSubmit={save} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-navy-400 mb-1 block">First Name</label><input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} required /></div>
-              <div><label className="text-xs text-navy-400 mb-1 block">Last Name</label><input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} /></div>
+  const pending = users.filter(u => u.status === 'pending')
+  const active = users.filter(u => u.status !== 'pending')
+
+  async function approve(u: User) {
+    try { await api.adminUpdate('users', { id: u.id, status: 'active' }); await refresh() } catch (err) { reportError(err) }
+  }
+  async function setRole(u: User, role: UserRole) {
+    try { await api.adminUpdate('users', { id: u.id, role }); await refresh() } catch (err) { reportError(err) }
+  }
+  async function del(id: string) {
+    if (!confirm('Delete this user?')) return
+    try { await api.adminDelete('users', id); await refresh() } catch (err) { reportError(err) }
+  }
+  function startEdit(u: User) { setEditId(u.id); setDraftTeamIds(u.teamIds) }
+  function toggleTeam(id: string) { setDraftTeamIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]) }
+  async function saveTeams(u: User) {
+    setBusy(true)
+    try { await api.adminUpdate('users', { id: u.id, teamIds: draftTeamIds }); await refresh(); setEditId(null) }
+    catch (err) { reportError(err) } finally { setBusy(false) }
+  }
+
+  function UserCard({ u }: { u: User }) {
+    const editing = editId === u.id
+    return (
+      <div className="bg-navy-800 rounded-lg px-4 py-3 border border-navy-700/50">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-display font-600 text-navy-100">{u.firstName} {u.lastName}</p>
+            <p className="text-xs text-navy-400 truncate">{u.email}</p>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {u.status === 'pending' && <Chip color="amber">pending</Chip>}
+              <Chip color={u.role === 'admin' ? 'amber' : 'navy'}>{u.role}</Chip>
+              {u.teamIds.map(tid => { const t = teamMap[tid]; return t ? <Chip key={tid} color="green">{teamLabel(t)}</Chip> : null })}
             </div>
-            <div><label className="text-xs text-navy-400 mb-1 block">Email</label><input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required /></div>
-            <div><label className="text-xs text-navy-400 mb-1 block">Password {editId && '(leave blank to keep)'}</label><input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} required={!editId} /></div>
-            <div><label className="text-xs text-navy-400 mb-1 block">Role</label>
-              <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value as UserRole }))}>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            {u.status === 'pending'
+              ? <Btn variant="primary" size="sm" onClick={() => approve(u)}>Approve</Btn>
+              : <button onClick={() => startEdit(u)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors" title="Assign teams"><IconEdit /></button>}
+            <button onClick={() => del(u.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
+          </div>
+        </div>
+        {editing && (
+          <div className="mt-3 pt-3 border-t border-navy-700/50 space-y-3">
+            <div>
+              <label className="text-xs text-navy-400 mb-1 block">Role</label>
+              <select value={u.role} onChange={e => setRole(u, e.target.value as UserRole)}>
                 <option value="coach">Coach</option><option value="admin">Admin</option>
               </select>
             </div>
-            {form.role === 'coach' && (
-              <div>
-                <label className="text-xs text-navy-400 mb-1.5 block">Assigned Teams</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {[...teams].sort((a,b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
-                    <button key={t.id} type="button" onClick={() => toggleTeam(t.id)}
-                      className={`px-2.5 py-1 rounded text-xs font-display font-700 transition-all ${
-                        form.teamIds.includes(t.id) ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600'
-                      }`}>
-                      {teamLabel(t)}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <label className="text-xs text-navy-400 mb-1.5 block">Assigned Teams</label>
+              <div className="flex flex-wrap gap-1.5">
+                {[...teams].sort((a,b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
+                  <button key={t.id} type="button" onClick={() => toggleTeam(t.id)}
+                    className={`px-2.5 py-1 rounded text-xs font-display font-700 transition-all ${
+                      draftTeamIds.includes(t.id) ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600'
+                    }`}>
+                    {teamLabel(t)}
+                  </button>
+                ))}
               </div>
-            )}
-            <div className="flex gap-2">
-              <Btn type="submit" variant="primary" size="sm">{editId ? 'Update' : 'Add User'}</Btn>
-              <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setShowAdd(false); setForm({ firstName: '', lastName: '', email: '', password: '', role: 'coach', teamIds: [] }) }}>Cancel</Btn>
             </div>
-          </form>
-        </Card>
-      )}
-      <div className="space-y-2">
-        {users.map(u => (
-          <div key={u.id} className="bg-navy-800 rounded-lg px-4 py-3 border border-navy-700/50">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-display font-600 text-navy-100">{u.firstName} {u.lastName}</p>
-                <p className="text-xs text-navy-400 truncate">{u.email}</p>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  <Chip color={u.role === 'admin' ? 'amber' : 'navy'}>{u.role}</Chip>
-                  {u.teamIds.map(tid => { const t = teamMap[tid]; return t ? <Chip key={tid} color="green">{teamLabel(t)}</Chip> : null })}
-                </div>
-              </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <button onClick={() => startEdit(u)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconEdit /></button>
-                <button onClick={() => del(u.id)} className="text-navy-400 hover:text-red-400 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconTrash /></button>
-              </div>
+            <div className="flex gap-2">
+              <Btn variant="primary" size="sm" disabled={busy} onClick={() => saveTeams(u)}>Save Teams</Btn>
+              <Btn variant="ghost" size="sm" onClick={() => setEditId(null)}>Done</Btn>
             </div>
           </div>
-        ))}
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {pending.length > 0 && (
+        <div className="space-y-2">
+          <SectionTitle>Pending Approval</SectionTitle>
+          {pending.map(u => <UserCard key={u.id} u={u} />)}
+        </div>
+      )}
+      <div className="space-y-2">
+        <SectionTitle>Users</SectionTitle>
+        {active.length === 0
+          ? <EmptyState icon="👤" message="No active users yet." />
+          : active.map(u => <UserCard key={u.id} u={u} />)}
       </div>
     </div>
   )
@@ -1271,33 +1201,41 @@ function AdminUsers({ users, setUsers, teams }: { users: User[]; setUsers: (u: U
 
 // ─── Auth Modal ───────────────────────────────────────────────────────────────
 
-function AuthModal({ onClose, onLogin, users, setUsers, teams }: {
+function AuthModal({ onClose, onLogin }: {
   onClose: () => void; onLogin: (u: User) => void;
-  users: User[]; setUsers: (u: User[]) => void; teams: Team[];
 }) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [teamIds, setTeamIds] = useState<string[]>([])
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function handleLogin(e: FormEvent) {
+  async function handleLogin(e: FormEvent) {
     e.preventDefault()
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password)
-    if (!user) { setError('Invalid email or password'); return }
-    onLogin(user); onClose()
+    setError(''); setBusy(true)
+    try {
+      const user = await api.login(email, password)
+      onLogin(user); onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid email or password')
+    } finally { setBusy(false) }
   }
 
-  function handleRegister(e: FormEvent) {
+  async function handleRegister(e: FormEvent) {
     e.preventDefault()
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) { setError('Email already in use'); return }
-    const u: User = { id: uid(), firstName, lastName, email, password, role: 'coach', teamIds }
-    setUsers([...users, u]); onLogin(u); onClose()
+    setError(''); setNotice(''); setBusy(true)
+    try {
+      await api.register(firstName, lastName, email, password)
+      setMode('login')
+      setNotice('Account created. An admin must approve it before you can sign in.')
+      setPassword('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create account')
+    } finally { setBusy(false) }
   }
-
-  function toggleTeam(id: string) { setTeamIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]) }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-sm" onClick={onClose}>
@@ -1310,7 +1248,7 @@ function AuthModal({ onClose, onLogin, users, setUsers, teams }: {
 
         <div className="flex mx-6 mt-4 mb-2 bg-navy-900 rounded-lg p-1">
           {(['login', 'register'] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); setError('') }}
+            <button key={m} onClick={() => { setMode(m); setError(''); setNotice('') }}
               className={`flex-1 py-1.5 rounded-md font-display font-700 text-sm tracking-wide transition-all ${
                 mode === m ? 'bg-cf-green text-navy-950' : 'text-navy-400 hover:text-navy-200'
               }`}>
@@ -1321,13 +1259,13 @@ function AuthModal({ onClose, onLogin, users, setUsers, teams }: {
 
         <div className="px-6 pb-6 overflow-y-auto max-h-[80vh]">
           {error && <p className="text-red-400 text-sm bg-red-500/10 rounded-lg px-3 py-2 mt-3 mb-1">{error}</p>}
+          {notice && <p className="text-cf-green text-sm bg-cf-green/10 rounded-lg px-3 py-2 mt-3 mb-1">{notice}</p>}
 
           {mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-3 mt-3">
               <div><label className="text-xs text-navy-400 mb-1 block">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required /></div>
               <div><label className="text-xs text-navy-400 mb-1 block">Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required /></div>
-              <p className="text-xs text-navy-500">Demo: hugo@crossfireselect.com / admin123 · sean@crossfireselect.com / coach123</p>
-              <Btn type="submit" variant="primary" size="lg" className="w-full mt-1">Sign In</Btn>
+              <Btn type="submit" variant="primary" size="lg" className="w-full mt-1" disabled={busy}>{busy ? 'Signing in…' : 'Sign In'}</Btn>
             </form>
           ) : (
             <form onSubmit={handleRegister} className="space-y-3 mt-3">
@@ -1337,20 +1275,8 @@ function AuthModal({ onClose, onLogin, users, setUsers, teams }: {
               </div>
               <div><label className="text-xs text-navy-400 mb-1 block">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} required /></div>
               <div><label className="text-xs text-navy-400 mb-1 block">Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} required /></div>
-              <div>
-                <label className="text-xs text-navy-400 mb-1.5 block">Your Team(s)</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {[...teams].sort((a,b) => teamLabel(a).localeCompare(teamLabel(b))).map(t => (
-                    <button key={t.id} type="button" onClick={() => toggleTeam(t.id)}
-                      className={`px-2.5 py-1 rounded text-xs font-display font-700 transition-all ${
-                        teamIds.includes(t.id) ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600'
-                      }`}>
-                      {teamLabel(t)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Btn type="submit" variant="primary" size="lg" className="w-full">Create Account</Btn>
+              <p className="text-xs text-navy-500">New coach accounts need admin approval before first sign-in. Your teams are assigned by an admin.</p>
+              <Btn type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>{busy ? 'Creating…' : 'Create Account'}</Btn>
             </form>
           )}
         </div>
@@ -1362,43 +1288,82 @@ function AuthModal({ onClose, onLogin, users, setUsers, teams }: {
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [teams,       setTeams]       = useState<Team[]>(() => load('cf_teams', SEED_TEAMS))
-  const [locations,   setLocations]   = useState<Location[]>(() => load('cf_locations', SEED_LOCATIONS))
-  const [fields,      setFields]      = useState<Field[]>(() => load('cf_fields', SEED_FIELDS))
-  const [slots,       setSlots]       = useState<SlotConfig[]>(() => load('cf_slots', buildSeedSlots()))
-  const [users,       setUsers]       = useState<User[]>(() => load('cf_users', SEED_USERS))
-  const [currentUser, setCurrentUser] = useState<User | null>(() => load('cf_currentUser', null))
+  const [teams,       setTeams]       = useState<Team[]>([])
+  const [locations,   setLocations]   = useState<Location[]>([])
+  const [fields,      setFields]      = useState<Field[]>([])
+  const [slots,       setSlots]       = useState<SlotConfig[]>([])
+  const [users,       setUsers]       = useState<User[]>([])
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [view,        setView]        = useState<View>('schedule')
   const [weekOffset,  setWeekOffset]  = useState(1)
   const [showAuth,    setShowAuth]    = useState(false)
+  const [loading,     setLoading]     = useState(true)
 
-  useEffect(() => { save('cf_teams',       teams)       }, [teams])
-  useEffect(() => { save('cf_locations',   locations)   }, [locations])
-  useEffect(() => { save('cf_fields',      fields)      }, [fields])
-  useEffect(() => { save('cf_slots',       slots)       }, [slots])
-  useEffect(() => { save('cf_users',       users)       }, [users])
-  useEffect(() => { save('cf_currentUser', currentUser) }, [currentUser])
-
-  function handleLogin(u: User) { setCurrentUser(u) }
-  function handleLogout() { setCurrentUser(null); setView('schedule') }
-
-  function handleReserve(slotId: string, teamId: string): string | null {
-    const slot = slots.find(s => s.id === slotId)
-    if (!slot) return 'Slot not found'
-    if (slot.reservedTeamIds.includes(teamId)) return 'Already reserved'
-    if (slot.reservedTeamIds.length >= slot.maxTeams) return 'This field is full'
-    const weekDates = getWeekDates(weekOffset)
-    const weekDateSet = new Set(weekDates.map(dateToStr))
-    const sameDaySlots = slots.filter(s => s.id !== slotId && s.date === slot.date && weekDateSet.has(s.date) && s.reservedTeamIds.includes(teamId))
-    if (sameDaySlots.length > 0) return 'Team already reserved a field on this day'
-    const weekCount = slots.filter(s => weekDateSet.has(s.date) && s.reservedTeamIds.includes(teamId)).length
-    if (weekCount >= 2) return 'Team already has 2 reservations this week'
-    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, reservedTeamIds: [...s.reservedTeamIds, teamId] } : s))
-    return null
+  // Pull the public catalog (teams/locations/fields/slots) and the current session.
+  async function loadBootstrap() {
+    const data = await api.bootstrap()
+    setTeams(data.teams)
+    setLocations(data.locations)
+    setFields(data.fields)
+    setSlots(data.slots)
   }
 
-  function handleCancel(slotId: string, teamId: string) {
-    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, reservedTeamIds: s.reservedTeamIds.filter(id => id !== teamId) } : s))
+  // Admin views need the full user list; only fetch it when signed in as admin.
+  async function loadUsers() {
+    try { setUsers(await api.adminList<User>('users')) } catch { /* non-admin: ignore */ }
+  }
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [, u] = await Promise.all([loadBootstrap(), api.me()])
+        setCurrentUser(u)
+        if (u?.role === 'admin') await loadUsers()
+      } catch (err) {
+        reportError(err)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  async function refreshAdmin() {
+    await loadBootstrap()
+    await loadUsers()
+  }
+
+  async function handleLogin(u: User) {
+    setCurrentUser(u)
+    // Team assignments/roles may have changed since bootstrap; re-pull the catalog and (if admin) users.
+    await loadBootstrap()
+    if (u.role === 'admin') await loadUsers()
+  }
+
+  async function handleLogout() {
+    try { await api.logout() } catch { /* ignore */ }
+    setCurrentUser(null)
+    setUsers([])
+    setView('schedule')
+  }
+
+  async function handleReserve(slotId: string, teamId: string): Promise<string | null> {
+    try {
+      const slot = await api.reserve(slotId, teamId)
+      setSlots(prev => prev.map(s => s.id === slotId ? slot : s))
+      return null
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Could not reserve this slot.'
+    }
+  }
+
+  async function handleCancel(slotId: string, teamId: string): Promise<string | null> {
+    try {
+      const slot = await api.cancel(slotId, teamId)
+      setSlots(prev => prev.map(s => s.id === slotId ? slot : s))
+      return null
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Could not cancel this reservation.'
+    }
   }
 
   const isAdmin = currentUser?.role === 'admin'
@@ -1411,21 +1376,22 @@ export default function App() {
     ...(isAdmin ? [{ id: 'admin' as View, label: 'Admin', icon: <IconSettings /> }] : []),
   ]
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-navy-900 flex flex-col items-center justify-center gap-3">
+        <img src="/assets/crossfire-select-logo.png" alt="Crossfire Select" className="h-12 w-auto animate-pulse" />
+        <p className="text-navy-500 text-sm font-display tracking-wide">Loading…</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-navy-900 flex flex-col max-w-2xl mx-auto">
       {/* Header */}
       <header className="sticky top-0 z-30 h-[60px] bg-navy-950 border-b border-navy-700/80 flex items-center px-4 gap-3 shadow-lg">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-cf-green flex items-center justify-center flex-shrink-0">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-              <circle cx="12" cy="12" r="9" stroke="#0a1628" strokeWidth="1.5" />
-              <path d="M12 3C12 3 9 7 9 12s3 9 3 9M12 3c0 0 3 4 3 9s-3 9-3 9M3 12h18M5 7.5C7 9 9.5 10 12 10s5-1 7-2.5M5 16.5C7 15 9.5 14 12 14s5 1 7 2.5" stroke="#0a1628" strokeWidth="1.5" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-display text-sm font-800 tracking-widest text-white leading-none uppercase">Crossfire Select</h1>
-            <p className="font-display text-[9px] font-600 tracking-widest text-cf-green leading-none uppercase">Field Manager</p>
-          </div>
+          <img src="/assets/crossfire-select-logo.png" alt="Crossfire Select" className="h-8 w-auto flex-shrink-0" />
+          <span className="font-display text-[9px] font-600 tracking-widest text-cf-green leading-none uppercase hidden sm:inline">Field Manager</span>
         </div>
 
         {currentUser ? (
@@ -1469,7 +1435,7 @@ export default function App() {
           </div>
         )}
         {view === 'admin' && isAdmin && (
-          <AdminView teams={teams} setTeams={setTeams} locations={locations} setLocations={setLocations} fields={fields} setFields={setFields} slots={slots} setSlots={setSlots} users={users} setUsers={setUsers} weekOffset={weekOffset} onWeekChange={setWeekOffset} />
+          <AdminView teams={teams} locations={locations} fields={fields} slots={slots} users={users} refresh={refreshAdmin} weekOffset={weekOffset} onWeekChange={setWeekOffset} />
         )}
       </main>
 
@@ -1495,7 +1461,7 @@ export default function App() {
       </nav>
 
       {showAuth && (
-        <AuthModal onClose={() => setShowAuth(false)} onLogin={handleLogin} users={users} setUsers={setUsers} teams={teams} />
+        <AuthModal onClose={() => setShowAuth(false)} onLogin={handleLogin} />
       )}
     </div>
   )

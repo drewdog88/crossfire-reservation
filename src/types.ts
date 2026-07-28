@@ -9,7 +9,8 @@ export interface Team {
   id: string
   gender: Gender
   birthYear: number
-  level: Level
+  level: string
+  coachName?: string | null
 }
 
 export interface Location {
@@ -35,14 +36,16 @@ export interface SlotConfig {
   reservedTeamIds: string[]
 }
 
+export type UserStatus = 'pending' | 'active'
+
 export interface User {
   id: string
   firstName: string
   lastName: string
   email: string
-  password: string
   role: UserRole
   teamIds: string[]
+  status?: UserStatus
 }
 
 export function teamLabel(team: Team): string {

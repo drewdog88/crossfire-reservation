@@ -29,6 +29,11 @@ This project moves the source of truth to **Neon Postgres**, served through
   existing visual views, which are kept.
 - Seed the database with real data migrated from the "60 acres 2025" spreadsheet
   (best-effort).
+- **Brand the app** with the official Crossfire Select logo (from
+  crossfireselect.com) in a dark app header, matching the club's identity.
+- **Ship an engineering wiki** mirroring the sibling `ewa-website-revamp` wiki —
+  a multi-page GitHub wiki (Home, Architecture, API, Database, etc.) with the same
+  polished style (badges, sidebar nav, architecture diagram).
 
 ## Non-goals (deferred)
 
@@ -260,6 +265,40 @@ needed by the app. `.env*` and `.vercel` are gitignored; the live Neon
 credentials never enter the public repo. GitHub Actions secrets are **not** added
 now — they arrive only with the deferred backup-drill spec (which needs the
 direct/unpooled URL as a repo secret).
+
+## Branding
+
+The official Crossfire Select logo (the red-script **Crossfire** + white
+**SELECT** + Nike swoosh lockup, 737×178 PNG grabbed from
+`crossfireselect.com/wp-content/uploads/2025/10/Untitled-design.png`) is committed
+to the repo at `public/assets/crossfire-select-logo.png` and rendered in the app
+header. Because the logo art is on a **black** background, the header is a dark bar
+(`bg-neutral-950` / near-black) so the logo reads cleanly; existing view/card
+styling below the header is unchanged. The logo also becomes the browser favicon
+(`index.html`). No other visual redesign — this is club identity, not a re-skin.
+
+## Engineering wiki
+
+A GitHub wiki mirroring the sibling `ewa-website-revamp/wiki/` in structure and
+polish: a `wiki/` directory of Markdown pages authored to be pushed to the repo's
+GitHub wiki. Pages follow ewa's set, scoped to this app:
+
+- `Home.md` — logo-topped hero (shields.io badges: React 19 / TypeScript / Vite /
+  Tailwind v4 / Vercel / Neon / Postgres), what-it-delivers table, design
+  principles, at-a-glance architecture image, and a wiki map.
+- `_Sidebar.md` — grouped nav (Understand it / Use & operate it / Build on it /
+  Look ahead).
+- `Architecture.md`, `How-It-Works.md` — the Vercel + Neon request lifecycle.
+- `Admin-Panel.md` — the admin's guide (CRUD, approve users, book/cancel any team).
+- `Deployment.md`, `Operations.md`, `Configuration.md`, `Development-Process.md`.
+- `API.md`, `Database.md` — the endpoint and schema references from this spec.
+- `Reservation-Rules.md` — the rule table, in prose, as the canonical statement.
+- `FAQ.md`, `Roadmap.md` (Roadmap lists the deferred backups + graphics work).
+
+The wiki documents *this* app (Neon-backed field reservations) — it does not copy
+ewa's booster-club content, only its structure, tone, and badge/sidebar style.
+Assets (architecture diagram, logo) live in `wiki/assets/`. The wiki is authored
+as the final task, after the app works, so it describes real behavior.
 
 ## Testing
 

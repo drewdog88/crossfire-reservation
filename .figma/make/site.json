@@ -2,5 +2,7 @@
   "title": "Crossfire Select Field Manager",
   "description": "Weekly field reservation for Crossfire Select soccer teams.",
   "language": "en",
-  "robots": { "index": true }
+  "robots": { "index": true },
+  "icons": { "icon": "/assets/crossfire-select-logo.png" },
+  "openGraph": { "image": "/assets/crossfire-select-logo.png" }
 }
