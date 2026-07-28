@@ -290,12 +290,12 @@ function FieldLane({
 
 // The complete field card for one SlotConfig
 function FieldPitchCard({
-  slot, field, location, teams, mode, myTeamIds, reservedDates, weekFull,
+  slot, field, location, teams, mode, myTeamIds, reservedDates,
   onReserve, onCancel, selectedTeamId,
 }: {
   slot: SlotConfig; field: Field; location: Location | undefined;
   teams: Team[]; mode: 'view' | 'reserve'; myTeamIds?: Set<string>;
-  reservedDates?: Set<string>; weekFull?: boolean;
+  reservedDates?: Set<string>;
   onReserve?: (slotId: string) => void;
   onCancel?: (slotId: string, teamId: string) => void;
   selectedTeamId?: string;
@@ -309,7 +309,7 @@ function FieldPitchCard({
 
   const myReservation = selectedTeamId ? slot.reservedTeamIds.includes(selectedTeamId) : false
   const dayBooked = selectedTeamId && reservedDates ? (!myReservation && reservedDates.has(slot.date)) : false
-  const canAct = !myReservation && !dayBooked && !weekFull && open > 0
+  const canAct = !myReservation && !dayBooked && open > 0
 
   // Build lane entries: filled slots first, then nulls for open spots
   const lanes = [
@@ -404,8 +404,6 @@ function FieldPitchCard({
             </>
           ) : dayBooked ? (
             <span className="text-xs text-amber-700">Already booked a field on this day</span>
-          ) : weekFull ? (
-            <span className="text-xs text-red-700">Week limit reached (max 2 per week)</span>
           ) : open === 0 ? (
             <span className="text-xs text-red-700">All slots taken for this day</span>
           ) : (
@@ -581,34 +579,6 @@ function ReserveView({
             </div>
           </div>
         )}
-
-        <div className={`px-3 py-2 rounded-lg text-xs font-medium ${
-          weekReservations.length >= 2 ? 'bg-red-500/10 text-red-700 border border-red-500/30' : 'bg-navy-800 text-navy-400 border border-navy-700'
-        }`}>
-          <div className="flex items-center gap-2">
-            <span className="font-display font-700">{selectedTeamId ? teamLabel(teamMap[selectedTeamId]!) : ''}</span>
-            <span>·</span>
-            <span><strong>{weekReservations.length}</strong>/2 reservations this week</span>
-            {weekReservations.length >= 2 && <span className="text-red-700">— weekly limit reached (max 2, on different days)</span>}
-          </div>
-          {weekReservations.length > 0 && (
-            <ul className="mt-1.5 space-y-0.5">
-              {[...weekReservations].sort(compareSlots(fieldMap)).map(s => {
-                const f = fieldMap[s.fieldId]
-                return (
-                  <li key={s.id} className="flex items-center gap-1.5 text-navy-300">
-                    <span className="text-cf-green">•</span>
-                    <span>{formatDisplayDate(s.date)}</span>
-                    <span className="text-navy-500">·</span>
-                    <span>{f?.name ?? 'Field'} ({f?.type})</span>
-                    <span className="text-navy-500">·</span>
-                    <span>{timeRangeLabel(s.startTime, s.endTime)}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
       </div>
 
       <FieldTypeToggle value={fieldType} onChange={setFieldType} />
@@ -631,7 +601,6 @@ function ReserveView({
                     mode="reserve"
                     myTeamIds={myTeamIds}
                     reservedDates={reservedDates}
-                    weekFull={weekReservations.length >= 2}
                     selectedTeamId={selectedTeamId}
                     onReserve={handleReserve}
                     onCancel={handleCancel}
@@ -648,12 +617,30 @@ function ReserveView({
 
 // ─── My Fields View ───────────────────────────────────────────────────────────
 
+type SortKey = 'day' | 'time' | 'field' | 'location' | 'team'
+type SortDir = 'asc' | 'desc'
+
+// One flattened reservation row plus the pre-computed values every column sorts on.
+interface ResRow {
+  key: string
+  slot: SlotConfig
+  teamId: string
+  day: string        // YYYY-MM-DD (sorts chronologically as a string)
+  time: string       // HH:MM start
+  field: string
+  fieldType: FieldType
+  location: string
+  team: string       // display label
+}
+
 function MyFieldsView({
-  weekOffset, onWeekChange, currentUser, teams, fields, locations, slots, onCancel,
+  weekOffset, onWeekChange, currentUser, teams, fields, locations, slots, onCancel, onMove,
 }: {
   weekOffset: number; onWeekChange: (o: number) => void;
   currentUser: User; teams: Team[]; fields: Field[]; locations: Location[];
-  slots: SlotConfig[]; onCancel: (slotId: string, teamId: string) => Promise<string | null>;
+  slots: SlotConfig[];
+  onCancel: (slotId: string, teamId: string) => Promise<string | null>;
+  onMove: (slotId: string, teamId: string, newSlotId: string, newTeamId: string) => Promise<string | null>;
 }) {
   const weekDates = getWeekDates(weekOffset)
   const weekDateSet = new Set(weekDates.map(dateToStr))
@@ -662,32 +649,119 @@ function MyFieldsView({
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const isAdmin = currentUser.role === 'admin'
   const myTeamIds = new Set(currentUser.teamIds)
-  const [busyKey, setBusyKey] = useState<string | null>(null)
+
+  const [sortKey, setSortKey] = useState<SortKey>('day')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState<ResRow | null>(null)
+
+  // Teams this user may reserve for (admins: all; coaches: their own).
+  const reservableTeams = (isAdmin ? teams : teams.filter(t => myTeamIds.has(t.id)))
+    .slice()
+    .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))
 
   // Flatten to one row per reservation (slot × team). Admins see every team's
   // bookings for the week; coaches see only their assigned teams'.
-  const rows = slots
+  const rows: ResRow[] = slots
     .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId])
-    .sort(compareSlots(fieldMap))
     .flatMap(slot =>
       slot.reservedTeamIds
         .filter(teamId => isAdmin || myTeamIds.has(teamId))
-        .map(teamId => ({ slot, teamId })),
+        .map(teamId => {
+          const f = fieldMap[slot.fieldId]!
+          const team = teamMap[teamId]
+          return {
+            key: `${slot.id}:${teamId}`,
+            slot, teamId,
+            day: slot.date,
+            time: slot.startTime,
+            field: f.name,
+            fieldType: f.type,
+            location: locationMap[f.locationId]?.name ?? '',
+            team: team ? teamLabel(team) : teamId,
+          }
+        }),
     )
 
-  async function cancel(slotId: string, teamId: string) {
-    const key = `${slotId}:${teamId}`
-    if (!confirm('Cancel this reservation?')) return
-    setBusyKey(key)
-    try { await onCancel(slotId, teamId) } finally { setBusyKey(null) }
+  // Sort by the active column; date/time always break ties for stable ordering.
+  const sorted = rows.slice().sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    const primary =
+      sortKey === 'day' ? a.day.localeCompare(b.day) || a.time.localeCompare(b.time)
+      : sortKey === 'time' ? a.time.localeCompare(b.time) || a.day.localeCompare(b.day)
+      : sortKey === 'field' ? a.field.localeCompare(b.field)
+      : sortKey === 'location' ? a.location.localeCompare(b.location)
+      : a.team.localeCompare(b.team)
+    if (primary !== 0) return primary * dir
+    // Tie-break deterministically so equal-key rows never jitter between renders.
+    return (a.day.localeCompare(b.day) || a.time.localeCompare(b.time) || a.key.localeCompare(b.key)) * dir
+  })
+
+  const visibleKeys = sorted.map(r => r.key)
+  const allSelected = visibleKeys.length > 0 && visibleKeys.every(k => selected.has(k))
+  const selectedRows = sorted.filter(r => selected.has(r.key))
+
+  function toggleSort(key: SortKey) {
+    if (key === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir('asc') }
   }
+  function toggleRow(key: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(visibleKeys))
+  }
+
+  async function cancelOne(slotId: string, teamId: string) {
+    if (!confirm('Cancel this reservation?')) return
+    setBusy(true)
+    try {
+      const err = await onCancel(slotId, teamId)
+      if (err) alert(err)
+      else setSelected(prev => {
+        const next = new Set(prev)
+        next.delete(`${slotId}:${teamId}`)
+        return next
+      })
+    } finally { setBusy(false) }
+  }
+
+  async function bulkDelete() {
+    if (selectedRows.length === 0) return
+    if (!confirm(`Cancel ${selectedRows.length} reservation${selectedRows.length === 1 ? '' : 's'}?`)) return
+    setBusy(true)
+    const failures: string[] = []
+    try {
+      for (const r of selectedRows) {
+        const err = await onCancel(r.slot.id, r.teamId)
+        if (err) failures.push(`${r.team}: ${err}`)
+      }
+    } finally { setBusy(false) }
+    setSelected(new Set())
+    if (failures.length > 0) alert(`Some cancellations failed:\n${failures.join('\n')}`)
+  }
+
+  const th = 'px-3 py-2 font-display font-700 select-none cursor-pointer hover:text-navy-200'
+  const arrow = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
   return (
     <div className="pb-24">
       <WeekNav weekOffset={weekOffset} onChange={onWeekChange} />
       <div className="px-4 pt-3">
-        <SectionTitle>{isAdmin ? 'All Reservations' : 'My Reservations'}</SectionTitle>
-        {rows.length === 0 ? (
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <SectionTitle>{isAdmin ? 'All Reservations' : 'My Reservations'}</SectionTitle>
+          {selectedRows.length > 0 && (
+            <Btn variant="danger" size="sm" disabled={busy} onClick={bulkDelete}>
+              {busy ? '…' : `Delete selected (${selectedRows.length})`}
+            </Btn>
+          )}
+        </div>
+        {sorted.length === 0 ? (
           <EmptyState
             icon="🗓"
             message={isAdmin
@@ -699,44 +773,136 @@ function MyFieldsView({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-navy-500 border-b border-navy-700">
-                  <th className="px-3 py-2 font-display font-700">Day</th>
-                  <th className="px-3 py-2 font-display font-700">Time</th>
-                  <th className="px-3 py-2 font-display font-700">Field</th>
-                  <th className="px-3 py-2 font-display font-700">Location</th>
-                  <th className="px-3 py-2 font-display font-700">Team</th>
-                  <th className="px-3 py-2 font-display font-700 text-right">Action</th>
+                  <th className="px-3 py-2 w-8">
+                    <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all" />
+                  </th>
+                  <th className={th} onClick={() => toggleSort('day')}>Day{arrow('day')}</th>
+                  <th className={th} onClick={() => toggleSort('time')}>Time{arrow('time')}</th>
+                  <th className={th} onClick={() => toggleSort('field')}>Field{arrow('field')}</th>
+                  <th className={th} onClick={() => toggleSort('location')}>Location{arrow('location')}</th>
+                  <th className={th} onClick={() => toggleSort('team')}>Team{arrow('team')}</th>
+                  <th className="px-3 py-2 font-display font-700 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ slot, teamId }) => {
-                  const f = fieldMap[slot.fieldId]!
-                  const loc = locationMap[f.locationId]
-                  const team = teamMap[teamId]
-                  const key = `${slot.id}:${teamId}`
-                  return (
-                    <tr key={key} className="border-b border-navy-700/60 last:border-0">
-                      <td className="px-3 py-2.5 text-navy-200 whitespace-nowrap">{formatDisplayDate(slot.date)}</td>
-                      <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{timeRangeLabel(slot.startTime, slot.endTime)}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        <span className="text-navy-100 font-display font-600">{f.name}</span>
-                        <span className="ml-1.5 text-[10px] uppercase tracking-wide text-navy-500">{f.type}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{loc?.name ?? '—'}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        <span className="font-display font-700 text-cf-green">{team ? teamLabel(team) : teamId}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                        <Btn variant="danger" size="sm" disabled={busyKey === key} onClick={() => cancel(slot.id, teamId)}>
-                          {busyKey === key ? '…' : 'Cancel'}
-                        </Btn>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {sorted.map(r => (
+                  <tr key={r.key} className={`border-b border-navy-700/60 last:border-0 ${selected.has(r.key) ? 'bg-cf-green/5' : ''}`}>
+                    <td className="px-3 py-2.5">
+                      <input type="checkbox" checked={selected.has(r.key)} onChange={() => toggleRow(r.key)} aria-label={`Select ${r.team}`} />
+                    </td>
+                    <td className="px-3 py-2.5 text-navy-200 whitespace-nowrap">{formatDisplayDate(r.slot.date)}</td>
+                    <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{timeRangeLabel(r.slot.startTime, r.slot.endTime)}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className="text-navy-100 font-display font-600">{r.field}</span>
+                      <span className="ml-1.5 text-[10px] uppercase tracking-wide text-navy-500">{r.fieldType}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-navy-300 whitespace-nowrap">{r.location || '—'}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className="font-display font-700 text-cf-green">{r.team}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                      <div className="inline-flex gap-1.5">
+                        <Btn variant="secondary" size="sm" disabled={busy} onClick={() => setEditing(r)}>Edit</Btn>
+                        <Btn variant="danger" size="sm" disabled={busy} onClick={() => cancelOne(r.slot.id, r.teamId)}>Cancel</Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
+      </div>
+      {editing && (
+        <EditReservationModal
+          row={editing}
+          teams={reservableTeams}
+          fields={fields}
+          locations={locations}
+          slots={slots}
+          onMove={onMove}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Modal to move a reservation to a different team and/or slot. The slot select
+// carries day/time/field/location together (a slot IS that combination), so
+// changing it reschedules across any of those dimensions at once. All fairness
+// rules are re-checked server-side; failures surface inline.
+function EditReservationModal({
+  row, teams, fields, locations, slots, onMove, onClose,
+}: {
+  row: ResRow; teams: Team[]; fields: Field[]; locations: Location[]; slots: SlotConfig[];
+  onMove: (slotId: string, teamId: string, newSlotId: string, newTeamId: string) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const fieldMap = Object.fromEntries(fields.map(f => [f.id, f]))
+  const locationMap = Object.fromEntries(locations.map(l => [l.id, l]))
+  const [teamId, setTeamId] = useState(row.teamId)
+  const [slotId, setSlotId] = useState(row.slot.id)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  // Selectable slots: the current one, plus any slot with an open spot. Sorted
+  // chronologically. Full slots (other than the current) are omitted since a
+  // move there can't succeed anyway.
+  const slotOptions = slots
+    .filter(s => fieldMap[s.fieldId])
+    .filter(s => s.id === row.slot.id || s.reservedTeamIds.length < s.maxTeams)
+    .sort(compareSlots(fieldMap))
+
+  function slotLabel(s: SlotConfig): string {
+    const f = fieldMap[s.fieldId]!
+    const loc = locationMap[f.locationId]
+    const open = Math.max(0, s.maxTeams - s.reservedTeamIds.length)
+    const tag = s.id === row.slot.id ? ' (current)' : open === 0 ? ' (full)' : ` · ${open} open`
+    return `${formatDisplayDate(s.date)} · ${timeRangeLabel(s.startTime, s.endTime)} — ${f.name} (${f.type}), ${loc?.name ?? '—'}${tag}`
+  }
+
+  const changed = teamId !== row.teamId || slotId !== row.slot.id
+
+  async function save() {
+    if (!changed) { onClose(); return }
+    setBusy(true)
+    setError('')
+    const err = await onMove(row.slot.id, row.teamId, slotId, teamId)
+    setBusy(false)
+    if (err) setError(err)
+    else onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-navy-800 w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-navy-600/50 shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-navy-700">
+          <h2 className="font-display text-xl font-800 tracking-wide text-navy-100">Edit Reservation</h2>
+          <button onClick={onClose} className="text-navy-400 hover:text-navy-100 transition-colors p-1 rounded hover:bg-navy-700"><IconX /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {error && <p className="text-red-700 text-sm bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
+          <div>
+            <label className="text-xs text-navy-400 mb-1 block">Team</label>
+            <select value={teamId} onChange={e => setTeamId(e.target.value)}>
+              {teams.map(t => <option key={t.id} value={t.id}>{teamLabel(t)}{t.coachName ? ` — ${t.coachName}` : ''}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-navy-400 mb-1 block">Day · Time · Field · Location</label>
+            <select value={slotId} onChange={e => setSlotId(e.target.value)}>
+              {slotOptions.map(s => <option key={s.id} value={s.id}>{slotLabel(s)}</option>)}
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Btn variant="ghost" size="sm" onClick={onClose} disabled={busy}>Cancel</Btn>
+            <Btn variant="primary" size="sm" onClick={save} disabled={busy || !changed}>
+              {busy ? 'Saving…' : 'Save changes'}
+            </Btn>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1444,6 +1610,19 @@ export default function App() {
     }
   }
 
+  async function handleMove(
+    slotId: string, teamId: string, newSlotId: string, newTeamId: string,
+  ): Promise<string | null> {
+    try {
+      const changed = await api.moveReservation(slotId, teamId, newSlotId, newTeamId)
+      const byId = new Map(changed.map(s => [s.id, s]))
+      setSlots(prev => prev.map(s => byId.get(s.id) ?? s))
+      return null
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Could not update this reservation.'
+    }
+  }
+
   const isAdmin = currentUser?.role === 'admin'
   const isCoach = !!currentUser
 
@@ -1505,7 +1684,7 @@ export default function App() {
           </div>
         )}
         {view === 'myfields' && isCoach ? (
-          <MyFieldsView weekOffset={weekOffset} onWeekChange={setWeekOffset} currentUser={currentUser!} teams={teams} fields={fields} locations={locations} slots={slots} onCancel={handleCancel} />
+          <MyFieldsView weekOffset={weekOffset} onWeekChange={setWeekOffset} currentUser={currentUser!} teams={teams} fields={fields} locations={locations} slots={slots} onCancel={handleCancel} onMove={handleMove} />
         ) : view === 'myfields' && (
           <div className="flex flex-col items-center gap-4 pt-16 px-4">
             <p className="text-navy-300 text-center">Sign in to view your reservations.</p>

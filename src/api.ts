@@ -69,6 +69,19 @@ export async function cancel(slotId: string, teamId: string): Promise<SlotConfig
   return slot
 }
 
+// Move a reservation to a different team and/or slot, re-validated server-side.
+// Returns every slot whose occupancy changed (destination, and the vacated
+// source when it differs) so the caller can refresh each in state.
+export async function moveReservation(
+  slotId: string, teamId: string, newSlotId: string, newTeamId: string,
+): Promise<SlotConfig[]> {
+  const { slots } = await req<{ slots: SlotConfig[] }>('/reservations', {
+    method: 'PATCH',
+    body: JSON.stringify({ slotId, teamId, newSlotId, newTeamId }),
+  })
+  return slots
+}
+
 type Entity = 'teams' | 'locations' | 'fields' | 'slots' | 'users'
 
 export function adminList<T>(entity: Entity): Promise<T[]> {
