@@ -271,16 +271,16 @@ function FieldLane({
       <div className="absolute right-0 top-3 bottom-3 w-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
 
       {interactive ? (
-        <div className="flex items-center gap-2.5 border border-dashed border-white/35 rounded-lg px-5 py-2 transition-all duration-150 group hover:border-cf-green/60 hover:bg-cf-green/8">
-          <svg className="w-4 h-4 text-white/50 group-hover:text-cf-green transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+        <div className="flex items-center gap-2.5 border border-dashed border-white/60 rounded-lg px-5 py-2 transition-all duration-150 group hover:border-white hover:bg-white/15">
+          <svg className="w-4 h-4 text-white/85 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
             <path d="M12 5v14M5 12h14" />
           </svg>
-          <span className="font-display font-700 text-sm tracking-widest uppercase text-white/50 group-hover:text-cf-green transition-colors">
+          <span className="font-display font-700 text-sm tracking-widest uppercase text-white/85 group-hover:text-white transition-colors">
             Reserve
           </span>
         </div>
       ) : (
-        <span className="font-display font-500 text-xs tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.2)' }}>
+        <span className="font-display font-600 text-xs tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.72)' }}>
           Available
         </span>
       )}
@@ -494,7 +494,6 @@ function ReserveView({
   onCancel: (slotId: string, teamId: string) => Promise<string | null>;
 }) {
   const [fieldType, setFieldType] = useState<FieldType>('Turf')
-  const [selectedTeamId, setSelectedTeamId] = useState(currentUser.teamIds[0] ?? '')
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   const weekDates = getWeekDates(weekOffset)
@@ -502,7 +501,13 @@ function ReserveView({
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const fieldMap = Object.fromEntries(fields.map(f => [f.id, f]))
   const locationMap = Object.fromEntries(locations.map(l => [l.id, l]))
-  const coachTeams = currentUser.teamIds.map(id => teamMap[id]).filter(Boolean) as Team[]
+  // Admins may reserve on behalf of any team (the server authorizes this);
+  // coaches are limited to the teams assigned to them.
+  const reservableTeams = (currentUser.role === 'admin'
+    ? [...teams].sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))
+    : currentUser.teamIds.map(id => teamMap[id]).filter(Boolean) as Team[])
+
+  const [selectedTeamId, setSelectedTeamId] = useState(reservableTeams[0]?.id ?? '')
 
   const weekReservations = slots.filter(s => weekDateSet.has(s.date) && s.reservedTeamIds.includes(selectedTeamId))
   const reservedDates = new Set(weekReservations.map(s => s.date))
@@ -532,7 +537,7 @@ function ReserveView({
   const byDate: Record<string, SlotConfig[]> = {}
   weekSlots.forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s) })
 
-  if (coachTeams.length === 0) {
+  if (reservableTeams.length === 0) {
     return (
       <div className="pb-24">
         <WeekNav weekOffset={weekOffset} onChange={onWeekChange} />
@@ -555,11 +560,13 @@ function ReserveView({
 
       {/* Controls strip */}
       <div className="px-4 pt-3 pb-2 space-y-2">
-        {coachTeams.length > 1 && (
+        {reservableTeams.length > 1 && (
           <div>
-            <label className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest mb-1.5 block">Reserving for</label>
+            <label className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest mb-1.5 block">
+              {currentUser.role === 'admin' ? 'Reserving for (admin — any team)' : 'Reserving for'}
+            </label>
             <div className="flex gap-2 flex-wrap">
-              {coachTeams.map(t => (
+              {reservableTeams.map(t => (
                 <button key={t.id} onClick={() => setSelectedTeamId(t.id)}
                   className={`px-3 py-1.5 rounded-lg font-display font-700 text-sm tracking-wide transition-all ${
                     selectedTeamId === t.id ? 'bg-cf-green text-navy-950' : 'bg-navy-700 text-navy-300 hover:bg-navy-600'
@@ -629,19 +636,30 @@ function MyFieldsView({
   const weekDateSet = new Set(weekDates.map(dateToStr))
   const fieldMap = Object.fromEntries(fields.map(f => [f.id, f]))
   const locationMap = Object.fromEntries(locations.map(l => [l.id, l]))
+  const isAdmin = currentUser.role === 'admin'
   const myTeamIds = new Set(currentUser.teamIds)
 
+  // Admins aren't assigned specific teams, so "My Fields" becomes an all-teams
+  // overview: every reserved slot for the week. Coaches see only their teams'.
   const mySlots = slots
-    .filter(s => weekDateSet.has(s.date) && fieldMap[s.fieldId] && s.reservedTeamIds.some(id => myTeamIds.has(id)))
+    .filter(s =>
+      weekDateSet.has(s.date) && fieldMap[s.fieldId]
+      && (isAdmin ? s.reservedTeamIds.length > 0 : s.reservedTeamIds.some(id => myTeamIds.has(id)))
+    )
     .sort(compareSlots(fieldMap))
 
   return (
     <div className="pb-24">
       <WeekNav weekOffset={weekOffset} onChange={onWeekChange} />
       <div className="px-4 pt-3">
-        <SectionTitle>My Reservations</SectionTitle>
+        <SectionTitle>{isAdmin ? 'All Reservations' : 'My Reservations'}</SectionTitle>
         {mySlots.length === 0 ? (
-          <EmptyState icon="🗓" message="No field reservations for this week. Go to Reserve to book a spot." />
+          <EmptyState
+            icon="🗓"
+            message={isAdmin
+              ? 'No teams have reserved a field this week yet.'
+              : 'No field reservations for this week. Go to Reserve to book a spot.'}
+          />
         ) : (
           <div className="space-y-4">
             {mySlots.map(slot => (
@@ -651,9 +669,9 @@ function MyFieldsView({
                 field={fieldMap[slot.fieldId]!}
                 location={locationMap[fieldMap[slot.fieldId]?.locationId ?? '']}
                 teams={teams}
-                mode="reserve"
+                mode={isAdmin ? 'view' : 'reserve'}
                 myTeamIds={myTeamIds}
-                selectedTeamId={currentUser.teamIds.find(id => slot.reservedTeamIds.includes(id))}
+                selectedTeamId={isAdmin ? undefined : currentUser.teamIds.find(id => slot.reservedTeamIds.includes(id))}
                 onCancel={onCancel}
               />
             ))}
