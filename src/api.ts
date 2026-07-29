@@ -96,3 +96,10 @@ export function adminUpdate<T>(entity: Entity, body: unknown): Promise<T> {
 export function adminDelete(entity: Entity, id: string): Promise<{ ok: true }> {
   return req<{ ok: true }>(`/admin/${entity}`, { method: 'DELETE', body: JSON.stringify({ id }) })
 }
+
+export function geocodeAddress(address: string): Promise<{ lat: number; lon: number }> {
+  return req<{ lat: number; lon: number }>('/admin/geocode-address', {
+    method: 'POST',
+    body: JSON.stringify({ address }),
+  })
+}

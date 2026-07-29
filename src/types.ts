@@ -4,7 +4,7 @@ export type Level = 'A' | 'B' | 'C' | 'D'
 export type FieldType = 'Turf' | 'Grass'
 export type Surface = FieldType | null
 export type UserRole = 'admin' | 'coach'
-export type View = 'schedule' | 'reserve' | 'myfields' | 'admin'
+export type View = 'schedule' | 'reserve' | 'myfields' | 'map' | 'admin'
 export type AdminTab = 'teams' | 'locations' | 'fields' | 'slots' | 'users'
 
 export interface Team {
@@ -19,6 +19,9 @@ export interface Location {
   id: string
   name: string
   city: string
+  address: string | null
+  lat: number | null
+  lon: number | null
 }
 
 export interface Field {
