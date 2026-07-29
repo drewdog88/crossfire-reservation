@@ -1803,7 +1803,6 @@ export default function App() {
           <ReserveView weekOffset={weekOffset} onWeekChange={setWeekOffset} currentUser={currentUser!} teams={teams} locations={locations} fields={fields} slots={slots} onReserve={handleReserve} onCancel={handleCancel} />
         ) : view === 'reserve' && (
           <div className="pb-24 flex flex-col items-center gap-4 pt-16 px-4">
-            <div className="w-16 h-16 rounded-2xl bg-navy-700 flex items-center justify-center text-3xl">⚽</div>
             <p className="text-navy-300 text-center">Sign in to reserve field slots for your team.</p>
             <Btn variant="primary" onClick={() => setShowAuth(true)}>Sign In</Btn>
           </div>
@@ -1821,7 +1820,6 @@ export default function App() {
         )}
         {view === 'map' && !currentUser && (
           <div className="flex flex-col items-center gap-4 pt-16 px-4">
-            <div className="w-16 h-16 rounded-2xl bg-navy-700 flex items-center justify-center text-3xl">🗺️</div>
             <p className="text-navy-300 text-center">Sign in to view the fields map.</p>
             <Btn variant="primary" onClick={() => setShowAuth(true)}>Sign In</Btn>
           </div>
