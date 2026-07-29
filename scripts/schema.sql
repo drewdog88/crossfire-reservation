@@ -21,9 +21,12 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 
 CREATE TABLE IF NOT EXISTS locations (
-  id   serial PRIMARY KEY,
-  name text NOT NULL,
-  city text
+  id      serial PRIMARY KEY,
+  name    text NOT NULL,
+  city    text,
+  address text,
+  lat     double precision,
+  lon     double precision
 );
 
 CREATE TABLE IF NOT EXISTS fields (

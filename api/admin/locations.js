@@ -13,11 +13,17 @@ export default async function handler(req, res) {
     }
     const body = await readBody(req)
     if (req.method === 'POST') {
-      const { rows } = await query('INSERT INTO locations (name, city) VALUES ($1,$2) RETURNING *', [body.name, body.city ?? null])
+      const { rows } = await query(
+        'INSERT INTO locations (name, city, address, lat, lon) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [body.name, body.city ?? null, body.address ?? null, body.lat ?? null, body.lon ?? null],
+      )
       return sendJson(res, 200, S.location(rows[0]))
     }
     if (req.method === 'PUT') {
-      const { rows } = await query('UPDATE locations SET name=$2, city=$3 WHERE id=$1 RETURNING *', [Number(body.id), body.name, body.city ?? null])
+      const { rows } = await query(
+        'UPDATE locations SET name=$2, city=$3, address=$4, lat=$5, lon=$6 WHERE id=$1 RETURNING *',
+        [Number(body.id), body.name, body.city ?? null, body.address ?? null, body.lat ?? null, body.lon ?? null],
+      )
       if (rows.length === 0) return sendJson(res, 404, { error: 'Not found.' })
       return sendJson(res, 200, S.location(rows[0]))
     }

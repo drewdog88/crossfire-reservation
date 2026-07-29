@@ -15,7 +15,14 @@ export function team(r) {
   return { id: String(r.id), gender: r.gender, birthYear: r.birth_year, level: r.level, coachName: r.coach_name ?? null }
 }
 export function location(r) {
-  return { id: String(r.id), name: r.name, city: r.city ?? null }
+  return {
+    id: String(r.id),
+    name: r.name,
+    city: r.city ?? null,
+    address: r.address ?? null,
+    lat: r.lat ?? null,
+    lon: r.lon ?? null,
+  }
 }
 export function field(r) {
   // type is null when the surface is unknown / unspecified.
