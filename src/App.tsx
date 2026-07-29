@@ -1,3 +1,14 @@
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+
+// Vite bundles Leaflet's marker images to hashed URLs; rebind the defaults so
+// markers render instead of 404ing on Leaflet's built-in relative paths.
+L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow })
+
 import { useState, useEffect } from 'react'
 import type { ReactNode, FormEvent } from 'react'
 import {
@@ -104,6 +115,12 @@ const IconX     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const IconTrash = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path d="M3 6h18M19 6l-1 14H6L5 6M9 6V4h6v2" /></svg>
 const IconEdit  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
 const IconUser  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+const IconMap = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5">
+    <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+)
 
 // ─── Week Navigator ───────────────────────────────────────────────────────────
 
@@ -1548,6 +1565,47 @@ function AuthModal({ onClose, onLogin }: {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
+// Signed-in-only geographic view of practice-field locations. Locations with
+// lat/lon get a marker + popup (name, city, field count); those without are
+// listed in a "Not mapped yet" panel. Centered on Redmond, WA (Crossfire hub).
+function MapView({ locations, fields }: { locations: Location[]; fields: Field[] }) {
+  const mapped = locations.filter(l => l.lat != null && l.lon != null)
+  const unmapped = locations.filter(l => l.lat == null || l.lon == null)
+  const fieldCount = (locId: string) => fields.filter(f => f.locationId === locId).length
+
+  if (locations.length === 0) {
+    return <EmptyState icon="🗺️" message="No locations have been added yet. Admins can create them in the Admin panel." />
+  }
+
+  return (
+    <div className="relative h-[calc(100vh-120px)]">
+      <MapContainer center={[47.67, -122.12]} zoom={10} style={{ height: '100%', width: '100%' }}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {mapped.map(l => (
+          <Marker key={l.id} position={[l.lat as number, l.lon as number]}>
+            <Popup>
+              <strong>{l.name}</strong>
+              {l.city && <div className="text-xs text-navy-500">{l.city}</div>}
+              <div className="text-xs text-navy-500 mt-1">{fieldCount(l.id)} field(s)</div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+      {unmapped.length > 0 && (
+        <div className="absolute top-3 right-3 z-[1000] bg-navy-800 border border-navy-600 rounded-xl shadow-xl p-4 max-w-[12rem]">
+          <h3 className="font-display text-sm font-600 text-navy-100 mb-2">Not mapped yet</h3>
+          <ul className="text-xs text-navy-300 space-y-1">
+            {unmapped.map(l => <li key={l.id}>{l.name}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [teams,       setTeams]       = useState<Team[]>([])
   const [locations,   setLocations]   = useState<Location[]>([])
@@ -1647,6 +1705,7 @@ export default function App() {
     { id: 'schedule', label: 'Schedule',  icon: <IconCalendar /> },
     { id: 'reserve',  label: 'Reserve',   icon: <IconField /> },
     { id: 'myfields', label: 'My Fields', icon: <IconClipboard /> },
+    { id: 'map',      label: 'Fields Map', icon: <IconMap /> },
     ...(isAdmin ? [{ id: 'admin' as View, label: 'Admin', icon: <IconSettings /> }] : []),
   ]
 
@@ -1708,6 +1767,16 @@ export default function App() {
             <Btn variant="primary" onClick={() => setShowAuth(true)}>Sign In</Btn>
           </div>
         )}
+        {view === 'map' && currentUser && (
+          <MapView locations={locations} fields={fields} />
+        )}
+        {view === 'map' && !currentUser && (
+          <div className="flex flex-col items-center gap-4 pt-16 px-4">
+            <div className="w-16 h-16 rounded-2xl bg-navy-700 flex items-center justify-center text-3xl">🗺️</div>
+            <p className="text-navy-300 text-center">Sign in to view the fields map.</p>
+            <Btn variant="primary" onClick={() => setShowAuth(true)}>Sign In</Btn>
+          </div>
+        )}
         {view === 'admin' && isAdmin && (
           <AdminView teams={teams} locations={locations} fields={fields} slots={slots} users={users} refresh={refreshAdmin} weekOffset={weekOffset} onWeekChange={setWeekOffset} />
         )}
@@ -1720,7 +1789,7 @@ export default function App() {
           return (
             <button key={item.id}
               onClick={() => {
-                if ((item.id === 'reserve' || item.id === 'myfields') && !isCoach) { setShowAuth(true); return }
+                if ((item.id === 'reserve' || item.id === 'myfields' || item.id === 'map') && !currentUser) { setShowAuth(true); return }
                 setView(item.id)
               }}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all relative ${
