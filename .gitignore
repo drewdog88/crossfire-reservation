@@ -6,3 +6,8 @@ dist/
 .env*
 package-lock.json
 .playwright-mcp/
+
+# Source roster data (contains coach names) — not for the public repo
+60 acres 2025.xlsx
+scripts/raw-tabs/
+scripts/sheet-bookings.json
