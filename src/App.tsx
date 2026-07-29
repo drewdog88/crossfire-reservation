@@ -9,7 +9,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 // markers render instead of 404ing on Leaflet's built-in relative paths.
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow })
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { ReactNode, FormEvent } from 'react'
 import {
   type Team, type Location, type Field, type SlotConfig, type User,
@@ -119,6 +119,12 @@ const IconMap = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-5 h-5">
     <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
     <circle cx="12" cy="10" r="3" />
+  </svg>
+)
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.35-4.35" />
   </svg>
 )
 
@@ -1655,6 +1661,109 @@ function MapView({ locations, fields }: { locations: Location[]; fields: Field[]
   )
 }
 
+// ─── Team Finder ──────────────────────────────────────────────────────────────
+// A public search box shown on every view except Admin. Type a team code
+// ("B14 D"), a coach name ("Rafael"), a gender ("boys"), or a birth year
+// ("2014") and see ALL of that team's practices across every week — newest
+// first. Works entirely off already-loaded catalog data; no backend call.
+
+// A team matches a query if the query words all appear in the team's searchable
+// text (label + coach + gender + year). Space-separated words are ANDed so
+// "b14 d" narrows to the D-level 2014 boys, not every B14.
+function teamMatches(team: Team, words: string[]): boolean {
+  const hay = [
+    teamLabel(team),
+    team.coachName ?? '',
+    team.gender,
+    String(team.birthYear),
+    String(team.birthYear).slice(-2),
+  ].join(' ').toLowerCase()
+  return words.every(w => hay.includes(w))
+}
+
+function TeamFinder({ teams, fields, locations, slots }: {
+  teams: Team[]; fields: Field[]; locations: Location[]; slots: SlotConfig[]
+}) {
+  const [query, setQuery] = useState('')
+  const q = query.trim().toLowerCase()
+
+  const teamMap = useMemo(() => Object.fromEntries(teams.map(t => [t.id, t])), [teams])
+  const fieldMap = useMemo(() => Object.fromEntries(fields.map(f => [f.id, f])), [fields])
+  const locationMap = useMemo(() => Object.fromEntries(locations.map(l => [l.id, l])), [locations])
+
+  // Practices for every team whose searchable text matches the query. Each row
+  // is one (slot, team) pairing, sorted date -> time descending (newest first).
+  const results = useMemo(() => {
+    if (q.length < 2) return []
+    const words = q.split(/\s+/).filter(Boolean)
+    const matchIds = new Set(teams.filter(t => teamMatches(t, words)).map(t => t.id))
+    if (matchIds.size === 0) return []
+    const rows: { key: string; date: string; slot: SlotConfig; team: Team; field?: Field }[] = []
+    for (const s of slots) {
+      for (const tid of s.reservedTeamIds) {
+        if (!matchIds.has(tid)) continue
+        const team = teamMap[tid]
+        if (!team) continue
+        rows.push({ key: `${s.id}|${tid}`, date: s.date, slot: s, team, field: fieldMap[s.fieldId] })
+      }
+    }
+    rows.sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1)
+        : a.slot.startTime < b.slot.startTime ? 1 : a.slot.startTime > b.slot.startTime ? -1 : 0)
+    return rows
+  }, [q, slots, teams, teamMap, fieldMap])
+
+  return (
+    <div className="px-4 pt-3 pb-1 bg-navy-900">
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400"><IconSearch /></span>
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Find your team or coach (e.g. B14 D, Rafael)"
+          className="w-full pl-9 pr-9 py-2 rounded-lg bg-navy-800 border border-navy-600 text-sm text-navy-100 placeholder:text-navy-400 focus:outline-none focus:border-cf-green"
+        />
+        {query && (
+          <button onClick={() => setQuery('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-navy-400 hover:text-navy-100">
+            <IconX />
+          </button>
+        )}
+      </div>
+
+      {q.length >= 2 && (
+        <div className="mt-2 rounded-xl border border-navy-600/60 bg-navy-800 overflow-hidden">
+          {results.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-navy-400">No practices found for “{query}”.</p>
+          ) : (
+            <>
+              <div className="px-3 py-2 text-[11px] uppercase tracking-wider font-display font-700 text-navy-400 border-b border-navy-700">
+                {results.length} practice{results.length === 1 ? '' : 's'}
+              </div>
+              <ul className="max-h-[60vh] overflow-y-auto divide-y divide-navy-700/70">
+                {results.map(r => {
+                  const loc = r.field ? locationMap[r.field.locationId] : undefined
+                  return (
+                    <li key={r.key} className="px-3 py-2 text-sm flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="font-display font-600 text-navy-100 w-28 shrink-0">{formatDisplayDate(r.date)}</span>
+                      <span className="text-navy-300">{timeRangeLabel(r.slot.startTime, r.slot.endTime)}</span>
+                      <span className="text-navy-400">·</span>
+                      <span className="text-navy-200">{loc?.name ?? 'Unknown'}{r.field ? ` ${r.field.name}` : ''}</span>
+                      <span className="text-cf-green font-medium ml-auto">
+                        {teamLabel(r.team)}{r.team.coachName ? ` (${r.team.coachName})` : ''}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [teams,       setTeams]       = useState<Team[]>([])
   const [locations,   setLocations]   = useState<Location[]>([])
@@ -1796,6 +1905,9 @@ export default function App() {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
+        {view !== 'admin' && (
+          <TeamFinder teams={teams} fields={fields} locations={locations} slots={slots} />
+        )}
         {view === 'schedule' && (
           <ScheduleView weekOffset={weekOffset} onWeekChange={setWeekOffset} teams={teams} locations={locations} fields={fields} slots={slots} />
         )}
