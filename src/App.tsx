@@ -1073,25 +1073,56 @@ function AdminTeams({ teams, refresh }: { teams: Team[]; refresh: () => Promise<
 }
 
 function AdminLocations({ locations, refresh }: { locations: Location[]; refresh: () => Promise<void> }) {
-  const [form, setForm] = useState({ name: '', city: '' })
+  const [form, setForm] = useState({ name: '', city: '', address: '', lat: '', lon: '' })
   const [editId, setEditId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [geoBusy, setGeoBusy] = useState(false)
+  const [geoErr, setGeoErr] = useState<string | null>(null)
+
+  function resetForm() { setForm({ name: '', city: '', address: '', lat: '', lon: '' }) }
 
   async function save(e: FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) return
     setBusy(true)
     try {
-      const body = { name: form.name.trim(), city: form.city.trim() || null }
+      const body = {
+        name: form.name.trim(),
+        city: form.city.trim() || null,
+        address: form.address.trim() || null,
+        lat: form.lat.trim() === '' ? null : Number(form.lat),
+        lon: form.lon.trim() === '' ? null : Number(form.lon),
+      }
       if (editId) await api.adminUpdate('locations', { id: editId, ...body })
       else await api.adminCreate('locations', body)
       await refresh()
       setEditId(null)
-      setForm({ name: '', city: '' })
+      resetForm()
     } catch (err) { reportError(err) } finally { setBusy(false) }
   }
 
-  function startEdit(l: Location) { setEditId(l.id); setForm({ name: l.name, city: l.city ?? '' }) }
+  async function geocode() {
+    if (!form.address.trim()) return
+    setGeoBusy(true)
+    setGeoErr(null)
+    try {
+      const { lat, lon } = await api.geocodeAddress(form.address.trim())
+      setForm(p => ({ ...p, lat: String(lat), lon: String(lon) }))
+    } catch (err) {
+      setGeoErr(err instanceof Error ? err.message : 'Geocoding failed. Enter coordinates manually.')
+    } finally { setGeoBusy(false) }
+  }
+
+  function startEdit(l: Location) {
+    setEditId(l.id)
+    setForm({
+      name: l.name,
+      city: l.city ?? '',
+      address: l.address ?? '',
+      lat: l.lat == null ? '' : String(l.lat),
+      lon: l.lon == null ? '' : String(l.lon),
+    })
+  }
   async function onDelete(id: string) {
     if (!confirm('Delete this location? Its fields and slots will be removed.')) return
     try { await api.adminDelete('locations', id); await refresh() } catch (err) { reportError(err) }
@@ -1111,9 +1142,27 @@ function AdminLocations({ locations, refresh }: { locations: Location[]; refresh
             <label className="text-xs text-navy-400 mb-1 block">City</label>
             <input placeholder="e.g. Redmond, WA" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} />
           </div>
+          <div>
+            <label className="text-xs text-navy-400 mb-1 block">Address</label>
+            <input placeholder="e.g. 17500 NE 76th St, Redmond, WA 98052" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} />
+          </div>
+          <div className="flex items-end gap-2">
+            <Btn variant="ghost" size="sm" disabled={geoBusy || !form.address.trim()} onClick={geocode}>{geoBusy ? 'Geocoding…' : 'Geocode Address'}</Btn>
+          </div>
+          {geoErr && <p className="text-red-500 text-xs">{geoErr}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-navy-400 mb-1 block">Latitude</label>
+              <input placeholder="47.7061" value={form.lat} onChange={e => setForm(p => ({ ...p, lat: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-navy-400 mb-1 block">Longitude</label>
+              <input placeholder="-122.1394" value={form.lon} onChange={e => setForm(p => ({ ...p, lon: e.target.value }))} />
+            </div>
+          </div>
           <div className="flex gap-2">
             <Btn type="submit" variant="primary" size="sm" disabled={busy}>{editId ? 'Update' : 'Add Location'}</Btn>
-            {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); setForm({ name: '', city: '' }) }}>Cancel</Btn>}
+            {editId && <Btn variant="ghost" size="sm" onClick={() => { setEditId(null); resetForm() }}>Cancel</Btn>}
           </div>
         </form>
       </Card>
@@ -1122,7 +1171,7 @@ function AdminLocations({ locations, refresh }: { locations: Location[]; refresh
           <div key={l.id} className="flex items-center justify-between bg-navy-800 rounded-lg px-4 py-3 border border-navy-700/50">
             <div>
               <p className="font-display font-600 text-navy-100">{l.name}</p>
-              <p className="text-xs text-navy-400">{l.city}</p>
+              <p className="text-xs text-navy-400">{l.city}{l.lat != null && l.lon != null ? ' · 📍 mapped' : ''}</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => startEdit(l)} className="text-navy-400 hover:text-navy-100 p-1.5 rounded hover:bg-navy-700 transition-colors"><IconEdit /></button>
