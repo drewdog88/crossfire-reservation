@@ -286,6 +286,19 @@ const IconMap = () => (
     <circle cx="12" cy="10" r="3" />
   </svg>
 )
+// Small pin sized to sit inline with a line of text (the field→map link).
+const IconMapPin = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.75}
+    className="w-3 h-3 flex-shrink-0"
+  >
+    <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+)
 const IconSearch = () => (
   <svg
     viewBox="0 0 24 24"
@@ -619,6 +632,9 @@ function FieldPitchCard({
   onReserve,
   onCancel,
   selectedTeamId,
+  onShowMap,
+  // Opens the Fields Map centered on this field's location. Present only when
+  // the location has coordinates, so the line renders as a link.
 }: {
   slot: SlotConfig
   field: Field
@@ -630,6 +646,7 @@ function FieldPitchCard({
   onReserve?: (slotId: string) => void
   onCancel?: (slotId: string, teamId: string) => void
   selectedTeamId?: string
+  onShowMap?: (locationId: string) => void
 }) {
   const teamMap = Object.fromEntries(teams.map((t) => [t.id, t]))
   const filled = slot.reservedTeamIds.length
@@ -685,12 +702,28 @@ function FieldPitchCard({
               {surfaceLabel(field.type)}
             </span>
           </div>
-          <p
-            className="text-xs font-medium mt-0.5"
-            style={{ color: "#64748b" }}
-          >
-            {location?.name} · {location?.city}
-          </p>
+          {location &&
+          onShowMap &&
+          location.lat != null &&
+          location.lon != null ? (
+            <button
+              type="button"
+              onClick={() => onShowMap(location.id)}
+              className="text-xs font-medium mt-0.5 text-cf-green hover:underline inline-flex items-center gap-1"
+              title="View on the fields map"
+            >
+              <IconMapPin />
+              {location.name}
+              {location.city ? ` · ${location.city}` : ""}
+            </button>
+          ) : (
+            <p
+              className="text-xs font-medium mt-0.5"
+              style={{ color: "#64748b" }}
+            >
+              {location?.name} · {location?.city}
+            </p>
+          )}
           <p className="text-xs font-display font-600 tracking-wide mt-0.5 text-cf-green">
             {timeRangeLabel(slot.startTime, slot.endTime)}
           </p>
@@ -823,6 +856,7 @@ function ScheduleView({
   locations,
   fields,
   slots,
+  onShowMap,
 }: {
   weekOffset: number
   onWeekChange: (o: number) => void
@@ -830,6 +864,7 @@ function ScheduleView({
   locations: Location[]
   fields: Field[]
   slots: SlotConfig[]
+  onShowMap: (locationId: string) => void
 }) {
   const [locationId, setLocationId] = useState<string>("all")
 
@@ -885,6 +920,7 @@ function ScheduleView({
                     }
                     teams={teams}
                     mode="view"
+                    onShowMap={onShowMap}
                   />
                 ))}
               </div>
@@ -908,6 +944,7 @@ function ReserveView({
   slots,
   onReserve,
   onCancel,
+  onShowMap,
 }: {
   weekOffset: number
   onWeekChange: (o: number) => void
@@ -918,6 +955,7 @@ function ReserveView({
   slots: SlotConfig[]
   onReserve: (slotId: string, teamId: string) => Promise<string | null>
   onCancel: (slotId: string, teamId: string) => Promise<string | null>
+  onShowMap: (locationId: string) => void
 }) {
   const [locationId, setLocationId] = useState<string>("all")
   const [toast, setToast] = useState<{ msg: string ok: boolean } | null>(null)
@@ -1064,6 +1102,7 @@ function ReserveView({
                     selectedTeamId={selectedTeamId}
                     onReserve={handleReserve}
                     onCancel={handleCancel}
+                    onShowMap={onShowMap}
                   />
                 ))}
               </div>
@@ -2945,14 +2984,22 @@ function AuthModal({
 function MapView({
   locations,
   fields,
+  focusLocationId,
+  // When set (e.g. arriving from a field's "View on map" link), the map opens
+  // centered and zoomed on that location with its popup already showing.
 }: {
   locations: Location[]
   fields: Field[]
+  focusLocationId?: string | null
 }) {
   const mapped = locations.filter((l) => l.lat != null && l.lon != null)
   const unmapped = locations.filter((l) => l.lat == null || l.lon == null)
   const fieldCount = (locId: string) =>
     fields.filter((f) => f.locationId === locId).length
+
+  const focus = focusLocationId
+    ? mapped.find((l) => l.id === focusLocationId)
+    : undefined
 
   if (locations.length === 0) {
     return (
@@ -2966,8 +3013,10 @@ function MapView({
   return (
     <div className="relative h-[calc(100vh-120px)]">
       <MapContainer
-        center={[47.67, -122.12]}
-        zoom={10}
+        center={
+          focus ? [focus.lat as number, focus.lon as number] : [47.67, -122.12]
+        }
+        zoom={focus ? 14 : 10}
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
@@ -2975,7 +3024,19 @@ function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {mapped.map((l) => (
-          <Marker key={l.id} position={[l.lat as number, l.lon as number]}>
+          <Marker
+            key={l.id}
+            position={[l.lat as number, l.lon as number]}
+            // Auto-open the popup for the focused location so the link lands
+            // the user directly on the field they tapped.
+            ref={
+              l.id === focus?.id
+                ? (m) => {
+                    m?.openPopup()
+                  }
+                : undefined
+            }
+          >
             <Popup>
               <strong>{l.name}</strong>
               {l.city && <div className="text-xs text-navy-500">{l.city}</div>}
@@ -3173,7 +3234,16 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([])
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [view, setView] = useState<View>("schedule")
+  // The location a field→map link asked to focus; cleared when the user
+  // navigates the map elsewhere via the nav bar.
+  const [mapFocusId, setMapFocusId] = useState<string | null>(null)
   const [weekOffset, setWeekOffset] = useState(1)
+
+  // Open the Fields Map focused on a specific location (from a field card link).
+  function showLocationOnMap(locationId: string) {
+    setMapFocusId(locationId)
+    setView("map")
+  }
   const [showAuth, setShowAuth] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -3371,6 +3441,7 @@ export default function App() {
             locations={locations}
             fields={fields}
             slots={slots}
+            onShowMap={showLocationOnMap}
           />
         )}
         {view === "reserve" && isCoach ? (
@@ -3384,6 +3455,7 @@ export default function App() {
             slots={slots}
             onReserve={handleReserve}
             onCancel={handleCancel}
+            onShowMap={showLocationOnMap}
           />
         ) : (
           view === "reserve" && (
@@ -3421,18 +3493,12 @@ export default function App() {
             </div>
           )
         )}
-        {view === "map" && currentUser && (
-          <MapView locations={locations} fields={fields} />
-        )}
-        {view === "map" && !currentUser && (
-          <div className="flex flex-col items-center gap-4 pt-16 px-4">
-            <p className="text-navy-300 text-center">
-              Sign in to view the fields map.
-            </p>
-            <Btn variant="primary" onClick={() => setShowAuth(true)}>
-              Sign In
-            </Btn>
-          </div>
+        {view === "map" && (
+          <MapView
+            locations={locations}
+            fields={fields}
+            focusLocationId={mapFocusId}
+          />
         )}
         {view === "admin" && isAdmin && (
           <AdminView
@@ -3456,15 +3522,18 @@ export default function App() {
             <button
               key={item.id}
               onClick={() => {
+                // Schedule and the Fields Map are public; reserving and
+                // My Fields require a signed-in coach.
                 if (
-                  (item.id === "reserve" ||
-                    item.id === "myfields" ||
-                    item.id === "map") &&
+                  (item.id === "reserve" || item.id === "myfields") &&
                   !currentUser
                 ) {
                   setShowAuth(true)
                   return
                 }
+                // Tapping "Fields Map" in the nav shows the whole map, not a
+                // field-specific focus, so clear any pending focus.
+                if (item.id === "map") setMapFocusId(null)
                 setView(item.id)
               }}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all relative ${
