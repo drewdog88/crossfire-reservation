@@ -38,30 +38,30 @@ platform differences** (intentional, not gaps).
 ## Tier 2 — Sub-features by screen
 
 ### App shell (`App.tsx:3396-3737`)
-- [ ] Loading splash: logo + "Loading…" until `bootstrap()` + `me()` resolve
-- [ ] Header shows `{firstName} {lastName}` + lowercased role, avatar, **Sign out** button (signed in)
-- [ ] Header shows **Sign In** button (signed out)
-- [ ] Bottom tab order: **Schedule, Reserve, My Fields, Fields Map** (+ **Admin** only when `role == admin`)
-- [ ] Active tab tinted `cf-green`, icon scaled, underline bar
-- [ ] Tapping **Reserve** or **My Fields** while signed out opens the auth sheet (does NOT switch tab); Schedule + Fields Map are public
-- [ ] Signed-out Reserve placeholder: "Sign in to reserve field slots for your team." + Sign In
-- [ ] Signed-out My Fields placeholder: "Sign in to view your reservations." + Sign In
+- [x] Loading splash: logo + "Loading…" until `bootstrap()` + `me()` resolve
+- [~] Header shows `{firstName} {lastName}` + lowercased role, avatar, **Sign out** button (signed in)
+- [x] Header shows **Sign In** button (signed out)
+- [x] Bottom tab order: **Schedule, Reserve, My Fields, Fields Map** (+ **Admin** only when `role == admin`)
+- [x] Active tab tinted `cf-green`, icon scaled, underline bar
+- [x] Tapping **Reserve** or **My Fields** while signed out opens the auth sheet (does NOT switch tab); Schedule + Fields Map are public
+- [x] Signed-out Reserve placeholder: "Sign in to reserve field slots for your team." + Sign In
+- [x] Signed-out My Fields placeholder: "Sign in to view your reservations." + Sign In
 - [ ] Shared week state (`weekOffset`, **default 1 = Next Week**) persists across Schedule/Reserve/My Fields/Admin-Slots
-- [ ] Sign out clears user + user list, resets to Schedule
+- [~] Sign out clears user + user list, resets to Schedule
 
 ### Auth sheet (`AuthModal`, `App.tsx:2936-3140`)
-- [ ] Bottom sheet on mobile / centered on desktop; backdrop tap closes
-- [ ] Segmented toggle: "Sign In" / "Register"; switching clears error + notice
-- [ ] Sign In: email (`required`, "you@example.com"), password (`required`); button "Sign In" → "Signing in…"
-- [ ] Sign In failure fallback text: "Invalid email or password"
-- [ ] Register: First Name + Last Name (both `required`), email, password; **no team selection**
-- [ ] Register helper text: "New coach accounts need admin approval before first sign-in. Your teams are assigned by an admin."
-- [ ] Register button "Create Account" → "Creating…"
-- [ ] On register success: switch to login mode, clear password, green notice **"Account created. An admin must approve it before you can sign in."**
-- [ ] Register failure fallback: "Could not create account"
-- [ ] Error banner (red) / notice banner (green) above form
-- [ ] **Sign Out** (AFROTC miss — explicit line item; lives in the header, see shell)
-- [ ] Login of a `pending` account surfaces server 403 "Your account is awaiting admin approval."
+- [x] Bottom sheet on mobile / centered on desktop; backdrop tap closes
+- [x] Segmented toggle: "Sign In" / "Register"; switching clears error + notice
+- [x] Sign In: email (`required`, "you@example.com"), password (`required`); button "Sign In" → "Signing in…"
+- [x] Sign In failure fallback text: "Invalid email or password"
+- [x] Register: First Name + Last Name (both `required`), email, password; **no team selection**
+- [x] Register helper text: "New coach accounts need admin approval before first sign-in. Your teams are assigned by an admin."
+- [x] Register button "Create Account" → "Creating…"
+- [~] On register success: switch to login mode, clear password, green notice **"Account created. An admin must approve it before you can sign in."**
+- [x] Register failure fallback: "Could not create account"
+- [x] Error banner (red) / notice banner (green) above form
+- [x] **Sign Out** (AFROTC miss — explicit line item; lives in the header, see shell)
+- [~] Login of a `pending` account surfaces server 403 "Your account is awaiting admin approval."
 
 ### Team Finder (`TeamFinder`, `App.tsx:3233-3394`)
 - [ ] Search box, placeholder "Find your team or coach (e.g. B14 D, Rafael)"
@@ -235,6 +235,7 @@ mirror only the tap-target affordance. Verify each error path:
 - [x] Admin mutations may stay full-refresh (like web) OR be optimistic — web is full-refresh; optimistic is an allowed enhancement, not a gap
 - [x] Keyboard-Enter activation of pitch reserve cells → plain tap on iOS (no hardware keyboard)
 - [x] Missing web empty states (Teams/Locations/Fields admin lists) may be added on iOS for polish without counting as divergence
+- [x] **Universal app:** the same SwiftUI screens run on iPhone AND iPad (`TARGETED_DEVICE_FAMILY = 1,2`). iPad is the same feature set on a wider canvas, not a separate layout — each screen is spot-checked on iPad Pro 11-inch (M5) as well as iPhone 17 Pro during build-and-drive.
 
 ---
 
