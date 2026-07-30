@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crossfire — Field Graphic (Vertical Columns)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --font-display:'Barlow Condensed',sans-serif; --font-sans:'Outfit',sans-serif;
+    --cf-green:#15803d; --cf-green-light:#bbf7d0;
+    --g1:#1a5220; --g2:#205e27; --t1:#14402c; --t2:#1a5037;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#eef1f6;font-family:var(--font-sans);color:#1e293b;padding:32px 20px 80px;}
+  .page{max-width:760px;margin:0 auto;}
+  h1{font-family:var(--font-display);font-weight:800;font-size:30px;margin:0 0 4px;}
+  .sub{color:#64748b;margin:0 0 28px;font-size:15px;}
+  .cap{font-family:var(--font-display);font-weight:700;font-size:15px;color:#475569;margin:26px 0 10px;text-transform:uppercase;letter-spacing:.06em;}
+
+  .card{border-radius:16px;overflow:hidden;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);border:1px solid #e2e8f0;background:#fff;}
+  .card-head{padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-bottom:1px solid #e2e8f0;}
+  .field-name{font-family:var(--font-display);font-weight:800;font-size:20px;letter-spacing:.02em;color:#0f172a;}
+  .surf{font-family:var(--font-display);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:5px;margin-left:8px;vertical-align:2px;}
+  .surf.grass{background:rgba(16,185,129,.12);color:#047857;border:1px solid rgba(16,185,129,.4);}
+  .surf.turf{background:rgba(59,130,246,.12);color:#1d4ed8;border:1px solid rgba(59,130,246,.4);}
+  .loc{color:#64748b;font-size:12px;margin-top:2px;}
+  .time{color:var(--cf-green);font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.03em;margin-top:2px;}
+  .open .n{font-family:var(--font-display);font-weight:800;font-size:12px;letter-spacing:.1em;color:var(--cf-green);text-align:right;}
+  .open .spots{font-family:var(--font-display);font-weight:500;font-size:12px;color:#94a3b8;margin-top:2px;text-align:right;}
+
+  /* pitch */
+  .pitch{position:relative;display:flex;align-items:stretch;}
+  .stripes-h-grass{background:repeating-linear-gradient(90deg,var(--g1) 0,var(--g1) 24px,var(--g2) 24px,var(--g2) 48px);}
+  .stripes-h-turf{background:repeating-linear-gradient(90deg,var(--t1) 0,var(--t1) 24px,var(--t2) 24px,var(--t2) 48px);}
+  .goal{position:absolute;top:16px;bottom:16px;width:1.5px;background:rgba(255,255,255,.28);z-index:4;}
+  .goal.l{left:0;} .goal.r{right:0;}
+  .markings{position:absolute;inset:0;z-index:1;pointer-events:none;}
+  .lanes{position:relative;z-index:2;display:flex;width:100%;}
+  .laneWrap{flex:1;display:flex;min-width:0;}
+  .divider{width:2px;align-self:stretch;margin:16px 0;flex-shrink:0;background:repeating-linear-gradient(180deg,rgba(255,255,255,.55) 0,rgba(255,255,255,.55) 16px,transparent 16px,transparent 30px);}
+  .col{position:relative;flex:1;display:flex;align-items:center;justify-content:center;min-width:0;text-align:center;}
+  .col.mine{background:linear-gradient(160deg,rgba(34,197,94,.32) 0%,rgba(34,197,94,.10) 100%);}
+  .col.other{background:rgba(0,0,0,.36);}
+  .col.empty{cursor:pointer;} .col.empty:hover{background:rgba(255,255,255,.10);}
+  .inner{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 8px;}
+  .inner.rot{writing-mode:vertical-rl;transform:rotate(180deg);}
+  .team{font-family:var(--font-display);font-weight:800;letter-spacing:.08em;line-height:1.05;}
+  .team.mine{color:var(--cf-green-light);} .team.other{color:rgba(255,255,255,.95);}
+  .team.wide{font-size:1.35rem;} .team.narrow{font-size:1.05rem;}
+  .yours{font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--cf-green-light);border:1px solid rgba(187,247,208,.5);background:rgba(34,197,94,.22);padding:2px 6px;border-radius:4px;white-space:nowrap;}
+  .avail{font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.72);white-space:nowrap;}
+  .reserve{display:inline-flex;align-items:center;gap:8px;border:1.5px dashed rgba(255,255,255,.6);border-radius:9px;padding:8px 12px;color:rgba(255,255,255,.9);font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;}
+  .reserve svg{width:15px;height:15px;flex-shrink:0;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Field Graphic — Vertical Columns (chosen)</h1>
+  <p class="sub">Exactly as built in <code>src/App.tsx</code>. Labels rotate to vertical once a field has &gt;3 sections. Team "Shockwave" = yours.</p>
+
+  <!-- helper markup via JS to keep it DRY -->
+  <div class="cap">2-team field · wide labels</div>
+  <div class="card">
+    <div class="card-head">
+      <div><span class="field-name">Grasslawn Park 1</span><span class="surf grass">Grass</span><div class="loc">📍 Grasslawn Park · Redmond</div><div class="time">4:30 – 6:00 PM</div></div>
+      <div class="open"><div class="n">1 OPEN</div><div class="spots">1/2 spots</div></div>
+    </div>
+    <div class="pitch stripes-h-grass" style="height:150px">
+      <div class="goal l"></div><div class="goal r"></div>
+      <svg class="markings" preserveAspectRatio="none"><line x1="50%" y1="0" x2="50%" y2="150" stroke="white" stroke-width="1" opacity=".065"/><circle cx="50%" cy="75" r="42" fill="none" stroke="white" stroke-width="1.5" opacity=".065"/><circle cx="50%" cy="75" r="2.5" fill="white" opacity=".065"/><path d="M 14% 33 Q 26% 75 14% 117" fill="none" stroke="white" stroke-width="1" opacity=".065"/><path d="M 86% 33 Q 74% 75 86% 117" fill="none" stroke="white" stroke-width="1" opacity=".065"/></svg>
+      <div class="lanes">
+        <div class="laneWrap"><div class="col mine"><div class="inner"><span class="team mine wide">Shockwave</span><span class="yours">✓ Yours</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col empty"><div class="inner"><span class="reserve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Reserve</span></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap">4-team field · rotated labels</div>
+  <div class="card">
+    <div class="card-head">
+      <div><span class="field-name">Grasslawn Park 1</span><span class="surf grass">Grass</span><div class="loc">📍 Grasslawn Park · Redmond</div><div class="time">4:30 – 6:00 PM</div></div>
+      <div class="open"><div class="n">2 OPEN</div><div class="spots">2/4 spots</div></div>
+    </div>
+    <div class="pitch stripes-h-grass" style="height:168px">
+      <div class="goal l"></div><div class="goal r"></div>
+      <svg class="markings" preserveAspectRatio="none"><line x1="50%" y1="0" x2="50%" y2="168" stroke="white" stroke-width="1" opacity=".065"/><circle cx="50%" cy="84" r="47" fill="none" stroke="white" stroke-width="1.5" opacity=".065"/><circle cx="50%" cy="84" r="2.5" fill="white" opacity=".065"/><path d="M 14% 37 Q 26% 84 14% 131" fill="none" stroke="white" stroke-width="1" opacity=".065"/><path d="M 86% 37 Q 74% 84 86% 131" fill="none" stroke="white" stroke-width="1" opacity=".065"/></svg>
+      <div class="lanes">
+        <div class="laneWrap"><div class="col mine"><div class="inner rot"><span class="team mine narrow">Shockwave</span><span class="yours">✓ Yours</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col other"><div class="inner rot"><span class="team other narrow">Rapids</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col empty"><div class="inner rot"><span class="reserve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Reserve</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col empty"><div class="inner rot"><span class="avail">Available</span></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap">6-team turf field</div>
+  <div class="card">
+    <div class="card-head">
+      <div><span class="field-name">Eastlake HS</span><span class="surf turf">Turf</span><div class="loc">📍 Eastlake · Sammamish</div><div class="time">6:00 – 7:30 PM</div></div>
+      <div class="open"><div class="n">3 OPEN</div><div class="spots">3/6 spots</div></div>
+    </div>
+    <div class="pitch stripes-h-turf" style="height:184px">
+      <div class="goal l"></div><div class="goal r"></div>
+      <svg class="markings" preserveAspectRatio="none"><line x1="50%" y1="0" x2="50%" y2="184" stroke="white" stroke-width="1" opacity=".06"/><circle cx="50%" cy="92" r="48" fill="none" stroke="white" stroke-width="1.5" opacity=".06"/><circle cx="50%" cy="92" r="2.5" fill="white" opacity=".06"/><path d="M 14% 44 Q 26% 92 14% 140" fill="none" stroke="white" stroke-width="1" opacity=".06"/><path d="M 86% 44 Q 74% 92 86% 140" fill="none" stroke="white" stroke-width="1" opacity=".06"/></svg>
+      <div class="lanes">
+        <div class="laneWrap"><div class="col mine"><div class="inner rot"><span class="team mine narrow">Shockwave</span><span class="yours">✓ Yours</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col other"><div class="inner rot"><span class="team other narrow">Rapids</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col other"><div class="inner rot"><span class="team other narrow">Galaxy</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col empty"><div class="inner rot"><span class="reserve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Reserve</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col empty"><div class="inner rot"><span class="avail">Available</span></div></div></div>
+        <div class="laneWrap"><div class="divider"></div><div class="col empty"><div class="inner rot"><span class="avail">Available</span></div></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

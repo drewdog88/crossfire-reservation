@@ -408,12 +408,12 @@ function surfaceLabel(type: Surface): string {
   return type ?? "Unknown"
 }
 
-function sectionH(maxTeams: number) {
-  if (maxTeams <= 2) return 92
-  if (maxTeams <= 3) return 84
-  if (maxTeams <= 4) return 72
-  if (maxTeams <= 6) return 62
-  return 54
+// Height of the whole landscape pitch. A little taller when more teams share it
+// so rotated column labels have room to breathe.
+function pitchH(maxTeams: number) {
+  if (maxTeams <= 2) return 150
+  if (maxTeams <= 4) return 168
+  return 184
 }
 
 // Sort slots by date, then start time, then field name — used by every schedule view
@@ -438,22 +438,8 @@ function formatDayHeader(dateStr: string): string {
   })
 }
 
-// Chalk dashes between sections — actual field divider lines
-function ChalkDivider() {
-  return (
-    <div
-      style={{
-        height: 2,
-        flexShrink: 0,
-        background:
-          "repeating-linear-gradient(90deg, rgba(255,255,255,0.55) 0px, rgba(255,255,255,0.55) 16px, transparent 16px, transparent 30px)",
-        margin: "0 16px",
-      }}
-    />
-  )
-}
-
-// Subtle field markings SVG overlay
+// Subtle field markings SVG overlay — landscape pitch: vertical halfway line,
+// center circle, and penalty arcs bulging in from the left/right goal ends.
 function FieldMarkingsSVG({
   totalH,
   fieldType,
@@ -461,9 +447,8 @@ function FieldMarkingsSVG({
   totalH: number
   fieldType: Surface
 }) {
-  const cx = "50%"
   const cy = totalH / 2
-  const r = Math.min(totalH * 0.22, 50)
+  const r = Math.min(totalH * 0.28, 48)
   return (
     <svg
       aria-hidden
@@ -477,28 +462,28 @@ function FieldMarkingsSVG({
       }}
       preserveAspectRatio="none"
     >
+      {/* Halfway line (vertical) */}
+      <line x1="50%" y1="0" x2="50%" y2={totalH} stroke="white" strokeWidth={1} />
       {/* Center circle */}
       <circle
-        cx={cx}
+        cx="50%"
         cy={cy}
         r={r}
         fill="none"
         stroke="white"
         strokeWidth={1.5}
       />
-      <circle cx={cx} cy={cy} r={2.5} fill="white" />
-      {/* Halfway line */}
-      <line x1="0" y1={cy} x2="100%" y2={cy} stroke="white" strokeWidth={1} />
-      {/* Top penalty arc */}
+      <circle cx="50%" cy={cy} r={2.5} fill="white" />
+      {/* Left penalty arc */}
       <path
-        d={`M 30% ${totalH * 0.18} Q 50% ${totalH * 0.28} 70% ${totalH * 0.18}`}
+        d={`M 14% ${cy - r} Q 26% ${cy} 14% ${cy + r}`}
         fill="none"
         stroke="white"
         strokeWidth={1}
       />
-      {/* Bottom penalty arc */}
+      {/* Right penalty arc */}
       <path
-        d={`M 30% ${totalH * 0.82} Q 50% ${totalH * 0.72} 70% ${totalH * 0.82}`}
+        d={`M 86% ${cy - r} Q 74% ${cy} 86% ${cy + r}`}
         fill="none"
         stroke="white"
         strokeWidth={1}
@@ -507,59 +492,56 @@ function FieldMarkingsSVG({
   )
 }
 
-// One horizontal strip of the field
-function FieldLane({
+// One vertical column of the field — teams share the pitch as side-by-side
+// sections (cone-marked strips), so labels rotate to read up the column when
+// space is tight. `narrow` is true once the columns get thin (>3 sections).
+function FieldColumn({
   team,
-  totalSections,
   isMyTeam,
+  narrow,
   mode,
   canAct,
   onAct,
 }: {
   team: Team | null
-  totalSections: number
   isMyTeam: boolean
+  narrow: boolean
   mode: "view" | "reserve"
   canAct: boolean
   onAct?: () => void
 }) {
-  const h = sectionH(totalSections)
   const interactive = mode === "reserve" && !team && canAct
 
   if (team) {
     return (
       <div
-        className="relative flex items-center select-none"
+        className="relative flex-1 flex items-center justify-center select-none min-w-0"
         style={{
-          height: h,
           background: isMyTeam
-            ? "linear-gradient(100deg, rgba(34,197,94,0.32) 0%, rgba(34,197,94,0.10) 100%)"
+            ? "linear-gradient(160deg, rgba(34,197,94,0.32) 0%, rgba(34,197,94,0.10) 100%)"
             : "rgba(0,0,0,0.36)",
         }}
       >
-        {/* Side pins */}
         <div
-          className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full"
-          style={{ background: "rgba(255,255,255,0.25)" }}
-        />
-        <div
-          className="absolute right-0 top-3 bottom-3 w-0.5 rounded-full"
-          style={{ background: "rgba(255,255,255,0.25)" }}
-        />
-
-        <div className="flex items-center justify-between w-full px-5">
+          className="flex flex-col items-center gap-2 px-2"
+          style={
+            narrow
+              ? { writingMode: "vertical-rl", transform: "rotate(180deg)" }
+              : undefined
+          }
+        >
           <span
-            className="font-display font-800 tracking-widest drop-shadow-lg"
+            className="font-display font-800 drop-shadow-lg text-center leading-tight"
             style={{
-              fontSize: h >= 72 ? "1.5rem" : "1.25rem",
+              fontSize: narrow ? "1.05rem" : "1.35rem",
               color: isMyTeam ? "#bbf7d0" : "rgba(255,255,255,0.95)",
-              letterSpacing: "0.1em",
+              letterSpacing: "0.08em",
             }}
           >
             {teamLabel(team)}
           </span>
           {isMyTeam && (
-            <span className="text-[10px] font-display font-700 tracking-widest uppercase text-cf-green bg-cf-green/20 border border-cf-green/40 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-display font-700 tracking-widest uppercase text-cf-green bg-cf-green/20 border border-cf-green/40 px-2 py-0.5 rounded whitespace-nowrap">
               YOURS
             </span>
           )}
@@ -568,7 +550,7 @@ function FieldLane({
     )
   }
 
-  // Empty lane
+  // Empty column
   return (
     <div
       role={interactive ? "button" : undefined}
@@ -577,26 +559,23 @@ function FieldLane({
       onKeyDown={
         interactive ? (e) => e.key === "Enter" && onAct?.() : undefined
       }
-      className={`relative flex items-center justify-center transition-all duration-150 ${
+      className={`relative flex-1 flex items-center justify-center min-w-0 transition-all duration-150 ${
         interactive
           ? "cursor-pointer hover:bg-white/10 active:bg-cf-green/15"
           : ""
       }`}
-      style={{ height: h }}
     >
-      <div
-        className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full"
-        style={{ background: "rgba(255,255,255,0.15)" }}
-      />
-      <div
-        className="absolute right-0 top-3 bottom-3 w-0.5 rounded-full"
-        style={{ background: "rgba(255,255,255,0.15)" }}
-      />
-
       {interactive ? (
-        <div className="flex items-center gap-2.5 border border-dashed border-white/60 rounded-lg px-5 py-2 transition-all duration-150 group hover:border-white hover:bg-white/15">
+        <div
+          className="flex items-center gap-2 border border-dashed border-white/60 rounded-lg px-3 py-2 transition-all duration-150 group hover:border-white hover:bg-white/15"
+          style={
+            narrow
+              ? { writingMode: "vertical-rl", transform: "rotate(180deg)" }
+              : undefined
+          }
+        >
           <svg
-            className="w-4 h-4 text-white/85 group-hover:text-white transition-colors"
+            className="w-4 h-4 shrink-0 text-white/85 group-hover:text-white transition-colors"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -604,14 +583,22 @@ function FieldLane({
           >
             <path d="M12 5v14M5 12h14" />
           </svg>
-          <span className="font-display font-700 text-sm tracking-widest uppercase text-white/85 group-hover:text-white transition-colors">
+          <span className="font-display font-700 text-sm tracking-widest uppercase text-white/85 group-hover:text-white transition-colors whitespace-nowrap">
             Reserve
           </span>
         </div>
       ) : (
         <span
-          className="font-display font-600 text-xs tracking-widest uppercase"
-          style={{ color: "rgba(255,255,255,0.72)" }}
+          className="font-display font-600 text-xs tracking-widest uppercase whitespace-nowrap"
+          style={
+            narrow
+              ? {
+                  color: "rgba(255,255,255,0.72)",
+                  writingMode: "vertical-rl",
+                  transform: "rotate(180deg)",
+                }
+              : { color: "rgba(255,255,255,0.72)" }
+          }
         >
           Available
         </span>
@@ -651,8 +638,8 @@ function FieldPitchCard({
   const teamMap = Object.fromEntries(teams.map((t) => [t.id, t]))
   const filled = slot.reservedTeamIds.length
   const open = Math.max(0, slot.maxTeams - filled)
-  const h = sectionH(slot.maxTeams)
-  const totalH = h * slot.maxTeams + Math.max(0, slot.maxTeams - 1) * 2
+  const totalH = pitchH(slot.maxTeams)
+  const narrow = slot.maxTeams > 3
   const [g1, g2] = grassColors(field.type)
 
   const myReservation = selectedTeamId
@@ -757,34 +744,42 @@ function FieldPitchCard({
         </div>
       </div>
 
-      {/* Grass field */}
+      {/* Grass field — landscape pitch split into vertical team columns */}
       <div
         className="relative"
         style={{
           height: totalH,
-          background: `repeating-linear-gradient(180deg, ${g1} 0px, ${g1} 24px, ${g2} 24px, ${g2} 48px)`,
+          background: `repeating-linear-gradient(90deg, ${g1} 0px, ${g1} 24px, ${g2} 24px, ${g2} 48px)`,
         }}
       >
         <FieldMarkingsSVG totalH={totalH} fieldType={field.type} />
 
-        {/* Top touchline */}
+        {/* Left goal line */}
         <div
-          className="absolute top-0 left-4 right-4"
-          style={{ height: 1.5, background: "rgba(255,255,255,0.28)" }}
+          className="absolute left-0 top-4 bottom-4"
+          style={{ width: 1.5, background: "rgba(255,255,255,0.28)" }}
         />
-        {/* Bottom touchline */}
+        {/* Right goal line */}
         <div
-          className="absolute bottom-0 left-4 right-4"
-          style={{ height: 1.5, background: "rgba(255,255,255,0.28)" }}
+          className="absolute right-0 top-4 bottom-4"
+          style={{ width: 1.5, background: "rgba(255,255,255,0.28)" }}
         />
 
-        <div className="relative z-10">
+        <div className="relative z-10 flex items-stretch h-full">
           {lanes.map((lane, i) => (
-            <div key={i}>
-              {i > 0 && <ChalkDivider />}
-              <FieldLane
+            <div key={i} className="flex-1 flex min-w-0">
+              {i > 0 && (
+                <div
+                  className="w-0.5 self-stretch my-4 shrink-0"
+                  style={{
+                    background:
+                      "repeating-linear-gradient(180deg, rgba(255,255,255,0.55) 0px, rgba(255,255,255,0.55) 16px, transparent 16px, transparent 30px)",
+                  }}
+                />
+              )}
+              <FieldColumn
                 team={lane.team}
-                totalSections={slot.maxTeams}
+                narrow={narrow}
                 isMyTeam={!!(lane.teamId && myTeamIds?.has(lane.teamId))}
                 mode={mode}
                 canAct={canAct}
