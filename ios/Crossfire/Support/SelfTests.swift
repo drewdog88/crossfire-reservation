@@ -16,3 +16,18 @@ func runSelfTests() {
     assert(cal.component(.weekday, from: wk[0]) == 2) // Monday
     print("SELFTEST OK")
 }
+
+func runModelSelfTests() {
+    let json = """
+    {"teams":[{"id":"1","gender":"Boys","birthYear":2014,"level":"D","coachName":null}],
+     "locations":[{"id":"2","name":"Grasslawn","city":"Redmond","address":null,"lat":47.6,"lon":-122.1}],
+     "fields":[{"id":"3","locationId":"2","name":"Park 1","type":null}],
+     "slots":[{"id":"4","fieldId":"3","date":"2026-08-01","startTime":"17:30","endTime":"19:00","maxTeams":4,"reservedTeamIds":["1"]}]}
+    """.data(using: .utf8)!
+    let c = try! JSONDecoder().decode(Catalog.self, from: json)
+    assert(c.teams[0].label == "B14-D")
+    assert(c.teams[0].coachName == nil)
+    assert(c.fields[0].type == .unknown)       // null -> .unknown, no crash
+    assert(c.slots[0].reservedTeamIds == ["1"])
+    print("MODEL SELFTEST OK")
+}
