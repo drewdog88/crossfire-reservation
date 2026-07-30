@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import type { ReactNode, FormEvent } from "react"
 import {
   type Team,
@@ -721,7 +721,8 @@ function FieldPitchCard({
               className="text-xs font-medium mt-0.5"
               style={{ color: "#64748b" }}
             >
-              {location?.name} · {location?.city}
+              {location?.name}
+              {location?.city ? ` · ${location.city}` : ""}
             </p>
           )}
           <p className="text-xs font-display font-600 tracking-wide mt-0.5 text-cf-green">
@@ -3001,6 +3002,14 @@ function MapView({
     ? mapped.find((l) => l.id === focusLocationId)
     : undefined
 
+  // Open the focused location's popup exactly once when we arrive on it, rather
+  // than on every re-render (an inline marker ref would re-open a popup the user
+  // had dismissed after any prop-driven re-render, e.g. a data refresh).
+  const markerRefs = useRef<Record<string, L.Marker | null>>({})
+  useEffect(() => {
+    if (focus) markerRefs.current[focus.id]?.openPopup()
+  }, [focus?.id])
+
   if (locations.length === 0) {
     return (
       <EmptyState
@@ -3027,15 +3036,11 @@ function MapView({
           <Marker
             key={l.id}
             position={[l.lat as number, l.lon as number]}
-            // Auto-open the popup for the focused location so the link lands
-            // the user directly on the field they tapped.
-            ref={
-              l.id === focus?.id
-                ? (m) => {
-                    m?.openPopup()
-                  }
-                : undefined
-            }
+            // Register the marker so the effect above can open the focused
+            // location's popup once on arrival.
+            ref={(m) => {
+              markerRefs.current[l.id] = m
+            }}
           >
             <Popup>
               <strong>{l.name}</strong>
