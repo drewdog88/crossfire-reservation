@@ -1872,14 +1872,26 @@ function AdminLocations({
   async function save(e: FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) return
+    // Validate coordinates before saving: a non-numeric or out-of-range entry
+    // would otherwise store NaN and silently make the location unmappable.
+    const lat = form.lat.trim() === "" ? null : Number(form.lat)
+    const lon = form.lon.trim() === "" ? null : Number(form.lon)
+    if (lat !== null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) {
+      reportError(new Error("Latitude must be a number between -90 and 90."))
+      return
+    }
+    if (lon !== null && (!Number.isFinite(lon) || lon < -180 || lon > 180)) {
+      reportError(new Error("Longitude must be a number between -180 and 180."))
+      return
+    }
     setBusy(true)
     try {
       const body = {
         name: form.name.trim(),
         city: form.city.trim() || null,
         address: form.address.trim() || null,
-        lat: form.lat.trim() === "" ? null : Number(form.lat),
-        lon: form.lon.trim() === "" ? null : Number(form.lon),
+        lat,
+        lon,
       }
       if (editId) await api.adminUpdate("locations", { id: editId, ...body })
       else await api.adminCreate("locations", body)
