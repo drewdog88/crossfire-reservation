@@ -928,6 +928,173 @@ function ScheduleView({
   )
 }
 
+// ─── Team Selector ────────────────────────────────────────────────────────────
+
+// Appends the coach name when two reservable teams share the same label, so the
+// options in the final row stay distinguishable.
+function disambiguatedLabel(team: Team, teams: Team[]): string {
+  const label = teamLabel(team)
+  const collides = teams.some((t) => t.id !== team.id && teamLabel(t) === label)
+  return collides && team.coachName ? `${label} · ${team.coachName}` : label
+}
+
+// Chip that highlights green when active, matching the app's existing pill style.
+function SelectorChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg font-display font-700 text-sm tracking-wide transition-all ${
+        active
+          ? "bg-cf-green text-navy-950"
+          : "bg-navy-700 text-navy-300 hover:bg-navy-600"
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// Selects which team a reservation is for. A short list (coaches) renders as a
+// single wrapping pill row; a large list (admin — every team) cascades
+// Gender → Birth Year → Team so no option row is ever an unwieldy blob and no
+// keyboard is needed. `selectedTeamId` remains the single source of truth; this
+// is only a progressive way to set it.
+function TeamSelector({
+  teams,
+  selectedTeamId,
+  onSelect,
+  label,
+}: {
+  teams: Team[]
+  selectedTeamId: string
+  onSelect: (id: string) => void
+  label: string
+}) {
+  const selected = teams.find((t) => t.id === selectedTeamId) ?? null
+  const useCascade = teams.length > 6
+
+  // Genders present, in a stable Boys→Girls order.
+  const genders = (["Boys", "Girls"] as Gender[]).filter((g) =>
+    teams.some((t) => t.gender === g),
+  )
+  const activeGender = selected?.gender ?? genders[0]
+
+  const years = Array.from(
+    new Set(teams.filter((t) => t.gender === activeGender).map((t) => t.birthYear)),
+  ).sort((a, b) => a - b)
+  const activeYear = selected?.birthYear ?? years[0]
+
+  const teamsForYear = teams
+    .filter((t) => t.gender === activeGender && t.birthYear === activeYear)
+    .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))
+
+  // When the gender/year changes, keep the current pick if it still fits that
+  // group, otherwise fall to the first team so selectedTeamId is never stranded.
+  function pickGender(g: Gender) {
+    if (selected?.gender === g) return
+    const firstYear = Array.from(
+      new Set(teams.filter((t) => t.gender === g).map((t) => t.birthYear)),
+    ).sort((a, b) => a - b)[0]
+    const first = teams
+      .filter((t) => t.gender === g && t.birthYear === firstYear)
+      .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))[0]
+    if (first) onSelect(first.id)
+  }
+
+  function pickYear(y: number) {
+    if (selected?.birthYear === y && selected?.gender === activeGender) return
+    const first = teams
+      .filter((t) => t.gender === activeGender && t.birthYear === y)
+      .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))[0]
+    if (first) onSelect(first.id)
+  }
+
+  return (
+    <div>
+      <label className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest mb-1.5 block">
+        {label}
+      </label>
+
+      {!useCascade ? (
+        <div className="flex gap-2 flex-wrap">
+          {teams.map((t) => (
+            <SelectorChip
+              key={t.id}
+              active={selectedTeamId === t.id}
+              onClick={() => onSelect(t.id)}
+            >
+              {teamLabel(t)}
+            </SelectorChip>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {genders.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest w-12 shrink-0">
+                Gender
+              </span>
+              <div className="flex gap-2 flex-wrap">
+                {genders.map((g) => (
+                  <SelectorChip
+                    key={g}
+                    active={activeGender === g}
+                    onClick={() => pickGender(g)}
+                  >
+                    {g}
+                  </SelectorChip>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest w-12 shrink-0">
+              Age
+            </span>
+            <div className="flex gap-2 flex-wrap">
+              {years.map((y) => (
+                <SelectorChip
+                  key={y}
+                  active={activeYear === y}
+                  onClick={() => pickYear(y)}
+                >
+                  {y}
+                </SelectorChip>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest w-12 shrink-0">
+              Team
+            </span>
+            <div className="flex gap-2 flex-wrap">
+              {teamsForYear.map((t) => (
+                <SelectorChip
+                  key={t.id}
+                  active={selectedTeamId === t.id}
+                  onClick={() => onSelect(t.id)}
+                >
+                  {disambiguatedLabel(t, teamsForYear)}
+                </SelectorChip>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Reserve View ─────────────────────────────────────────────────────────────
 
 function ReserveView({
@@ -1041,28 +1208,16 @@ function ReserveView({
       {/* Controls strip */}
       <div className="px-4 pt-3 pb-2 space-y-2">
         {reservableTeams.length > 1 && (
-          <div>
-            <label className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest mb-1.5 block">
-              {currentUser.role === "admin"
+          <TeamSelector
+            teams={reservableTeams}
+            selectedTeamId={selectedTeamId}
+            onSelect={setSelectedTeamId}
+            label={
+              currentUser.role === "admin"
                 ? "Reserving for (admin — any team)"
-                : "Reserving for"}
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {reservableTeams.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTeamId(t.id)}
-                  className={`px-3 py-1.5 rounded-lg font-display font-700 text-sm tracking-wide transition-all ${
-                    selectedTeamId === t.id
-                      ? "bg-cf-green text-navy-950"
-                      : "bg-navy-700 text-navy-300 hover:bg-navy-600"
-                  }`}
-                >
-                  {teamLabel(t)}
-                </button>
-              ))}
-            </div>
-          </div>
+                : "Reserving for"
+            }
+          />
         )}
       </div>
 
