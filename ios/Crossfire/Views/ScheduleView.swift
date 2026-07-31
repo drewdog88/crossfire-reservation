@@ -93,7 +93,7 @@ struct ScheduleContent: View {
             }
             let aName = fieldMap[a.fieldId]?.name ?? ""
             let bName = fieldMap[b.fieldId]?.name ?? ""
-            return aName < bName
+            return aName.localizedCompare(bName) == .orderedAscending
         }
     }
 }
@@ -177,10 +177,10 @@ struct LocationChip: View {
         Button(action: onTap) {
             Text(label)
                 .font(Theme.display(14))
-                .foregroundColor(isActive ? Color(red: 0x0f/255, green: 0x17/255, blue: 0x2a/255) : Color(red: 0x94/255, green: 0xa3/255, blue: 0xb8/255))
+                .foregroundColor(isActive ? Color(red: 0xff/255, green: 0xff/255, blue: 0xff/255) : Color(red: 0x47/255, green: 0x55/255, blue: 0x69/255))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(isActive ? Theme.cfGreen : Color(red: 0x33/255, green: 0x41/255, blue: 0x55/255))
+                .background(isActive ? Theme.cfGreen : Color(red: 0xe2/255, green: 0xe8/255, blue: 0xf0/255))
                 .cornerRadius(8)
         }
     }
@@ -192,17 +192,17 @@ struct DayHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             Rectangle()
-                .fill(Color(red: 0x33/255, green: 0x41/255, blue: 0x55/255))
+                .fill(Color(red: 0xe2/255, green: 0xe8/255, blue: 0xf0/255))
                 .frame(height: 1)
 
-            Text(Formatting.formatDisplayDate(dateStr))
+            Text(Formatting.formatDayHeader(dateStr))
                 .font(Theme.display(10))
-                .foregroundColor(Color(red: 0x64/255, green: 0x74/255, blue: 0x8b/255))
+                .foregroundColor(Color(red: 0x94/255, green: 0xa3/255, blue: 0xb8/255))
                 .textCase(.uppercase)
                 .tracking(1.5)
 
             Rectangle()
-                .fill(Color(red: 0x33/255, green: 0x41/255, blue: 0x55/255))
+                .fill(Color(red: 0xe2/255, green: 0xe8/255, blue: 0xf0/255))
                 .frame(height: 1)
         }
         .padding(.top, 16)
@@ -221,7 +221,7 @@ struct EmptyState: View {
 
             Text(message)
                 .font(Theme.sans(14))
-                .foregroundColor(Color(red: 0x94/255, green: 0xa3/255, blue: 0xb8/255))
+                .foregroundColor(Color(red: 0x47/255, green: 0x55/255, blue: 0x69/255))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }

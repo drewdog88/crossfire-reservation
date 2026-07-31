@@ -47,4 +47,11 @@ enum Formatting {
         let outF = DateFormatter(); outF.dateFormat = "EEE, MMM d"
         return outF.string(from: d)
     }
+
+    static func formatDayHeader(_ dateStr: String) -> String {
+        let inF = DateFormatter(); inF.calendar = cal; inF.dateFormat = "yyyy-MM-dd"
+        guard let d = inF.date(from: dateStr) else { return dateStr }
+        let outF = DateFormatter(); outF.dateFormat = "EEEE, MMM d"
+        return outF.string(from: d)
+    }
 }
