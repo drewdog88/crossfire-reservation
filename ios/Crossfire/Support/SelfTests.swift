@@ -14,6 +14,31 @@ func runSelfTests() {
     assert(wk.count == 7)
     let cal = Calendar(identifier: .gregorian)
     assert(cal.component(.weekday, from: wk[0]) == 2) // Monday
+    // TeamSelector cascade (task 1.3)
+    let t1 = Team(id: "1", gender: "Boys", birthYear: 2014, level: "D", coachName: nil)
+    let t2 = Team(id: "2", gender: "Boys", birthYear: 2014, level: "D", coachName: "Smith")
+    let t3 = Team(id: "3", gender: "Girls", birthYear: 2015, level: "A", coachName: "Jones")
+    let t4 = Team(id: "4", gender: "Girls", birthYear: 2015, level: "A", coachName: nil)
+    let teams = [t1, t2, t3, t4]
+    // disambiguatedLabel: collision + non-nil coachName → append " · coachName"
+    assert(TeamSelectorHelpers.disambiguatedLabel(t2, in: teams) == "B14-D · Smith")
+    // collision but coachName nil → plain label
+    assert(TeamSelectorHelpers.disambiguatedLabel(t1, in: teams) == "B14-D")
+    // no collision + coachName → plain label
+    assert(TeamSelectorHelpers.disambiguatedLabel(t3, in: teams) == "G15-A")
+    // no collision + nil coachName → plain label
+    assert(TeamSelectorHelpers.disambiguatedLabel(t4, in: teams) == "G15-A")
+    // useCascade: >6 → true, ≤6 → false
+    assert(TeamSelectorHelpers.useCascade(teams.count) == false) // 4
+    assert(TeamSelectorHelpers.useCascade(6) == false)
+    assert(TeamSelectorHelpers.useCascade(7) == true)
+    // gendersPresent: stable Boys→Girls order, only those present
+    let boysOnly = [t1]
+    let girlsOnly = [t3]
+    let mixed = teams
+    assert(TeamSelectorHelpers.gendersPresent(in: boysOnly) == ["Boys"])
+    assert(TeamSelectorHelpers.gendersPresent(in: girlsOnly) == ["Girls"])
+    assert(TeamSelectorHelpers.gendersPresent(in: mixed) == ["Boys", "Girls"])
     print("SELFTEST OK")
 }
 
