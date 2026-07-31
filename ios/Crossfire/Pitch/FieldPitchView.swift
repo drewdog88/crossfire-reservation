@@ -14,6 +14,7 @@ struct FieldPitchView: View {
     let dayBooked: Bool
     let onReserve: (() -> Void)?
     let onCancel: (() -> Void)?
+    let onShowMap: ((String) -> Void)?
 
     var body: some View {
         let filled = slot.reservedTeamIds.count
@@ -40,9 +41,25 @@ struct FieldPitchView: View {
                     }
 
                     if let location = location {
-                        Text("\(location.name)\(location.city != nil ? " · \(location.city!)" : "")")
-                            .font(Theme.sans(12))
-                            .foregroundColor(Color(red: 0x64/255, green: 0x74/255, blue: 0x8b/255))
+                        if location.lat != nil && location.lon != nil && onShowMap != nil {
+                            Button {
+                                onShowMap?(location.id)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "mappin")
+                                        .font(.system(size: 9, weight: .semibold))
+                                        .foregroundColor(Theme.cfGreen)
+
+                                    Text("\(location.name)\(location.city != nil ? " · \(location.city!)" : "")")
+                                        .font(Theme.sans(12))
+                                        .foregroundColor(Theme.cfGreen)
+                                }
+                            }
+                        } else {
+                            Text("\(location.name)\(location.city != nil ? " · \(location.city!)" : "")")
+                                .font(Theme.sans(12))
+                                .foregroundColor(Color(red: 0x64/255, green: 0x74/255, blue: 0x8b/255))
+                        }
                     }
 
                     Text(Formatting.timeRangeLabel(start: slot.startTime, end: slot.endTime))

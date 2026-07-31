@@ -52,8 +52,7 @@ struct MainTabView: View {
 
             // Tab content
             TabView(selection: $selectedTab) {
-                Text("Schedule")
-                    .font(Theme.sans(16))
+                ScheduleView(onShowMap: { _ in selectedTab = 3 })
                     .tag(0)
                     .tabItem {
                         Label("Schedule", systemImage: "calendar")

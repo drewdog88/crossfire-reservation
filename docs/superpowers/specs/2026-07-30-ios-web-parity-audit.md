@@ -74,11 +74,11 @@ platform differences** (intentional, not gaps).
 - [ ] Row: date · time range · location · field · right-aligned team label + "(coach)" if present
 
 ### Schedule (`ScheduleView`, `App.tsx:848-929`)
-- [ ] WeekNav (prev/next, range label, This Week/Next Week/Past tags, **no min/max**)
-- [ ] Location filter chips ("All fields" + one per location); default "all"
-- [ ] Field pitch cards per slot, grouped by date with DayHeader
-- [ ] Empty state: "No fields scheduled for this week. Try a different week or location."
-- [ ] Field pitch card location line → Fields Map link (only when lat+lon exist)
+- [x] WeekNav (prev/next, range label, This Week/Next Week/Past tags, **no min/max**)
+- [x] Location filter chips ("All fields" + one per location); default "all"
+- [~] Field pitch cards per slot, grouped by date with DayHeader
+- [x] Empty state: "No fields scheduled for this week. Try a different week or location."
+- [~] Field pitch card location line → Fields Map link (only when lat+lon exist)
 
 ### Reserve (`ReserveView`, `App.tsx:1100-1266`)
 - [ ] WeekNav (shared week state)
