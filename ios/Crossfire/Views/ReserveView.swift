@@ -100,6 +100,7 @@ struct ReserveView: View {
                                 )
                                 .padding(.top, 32)
                             } else {
+                                let myTeamIds = Set(session.user?.teamIds ?? [])
                                 ForEach(sortedEntries.indices, id: \.self) { idx in
                                     ReserveDaySection(
                                         dateStr: sortedEntries[idx].key,
@@ -109,6 +110,7 @@ struct ReserveView: View {
                                         teamsById: teamsById,
                                         selectedTeamId: selectedTeamId,
                                         reservedDates: reservedDates,
+                                        myTeamIds: myTeamIds,
                                         onReserve: { slot in
                                             handleReserve(slotId: slot.id)
                                         },
@@ -212,6 +214,7 @@ private struct ReserveDaySection: View {
     let teamsById: [String: Team]
     let selectedTeamId: String
     let reservedDates: Set<String>
+    let myTeamIds: Set<String>
     let onReserve: (SlotConfig) -> Void
     let onCancel: (SlotConfig) -> Void
     let onShowMap: (String) -> Void
@@ -232,6 +235,7 @@ private struct ReserveDaySection: View {
                         teamsById: teamsById,
                         mode: .reserve,
                         myTeamId: selectedTeamId,
+                        myTeamIds: myTeamIds,
                         dayBooked: dayBooked,
                         onReserve: { onReserve(slot) },
                         onCancel: { onCancel(slot) },

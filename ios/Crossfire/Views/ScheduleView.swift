@@ -121,6 +121,7 @@ struct DaySection: View {
                         teamsById: teamsById,
                         mode: .view,
                         myTeamId: nil,
+                        myTeamIds: [],
                         dayBooked: false,
                         onReserve: nil,
                         onCancel: nil,

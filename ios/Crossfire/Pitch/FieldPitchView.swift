@@ -11,6 +11,7 @@ struct FieldPitchView: View {
     let teamsById: [String: Team]
     let mode: PitchMode
     let myTeamId: String?
+    let myTeamIds: Set<String>
     let dayBooked: Bool
     let onReserve: (() -> Void)?
     let onCancel: (() -> Void)?
@@ -127,7 +128,7 @@ struct FieldPitchView: View {
                         }
                         FieldColumn(
                             team: lane.team,
-                            isMyTeam: lane.teamId != nil && myTeamId == lane.teamId,
+                            isMyTeam: lane.teamId != nil && myTeamIds.contains(lane.teamId!),
                             narrow: narrow,
                             mode: mode,
                             canAct: canAct,
