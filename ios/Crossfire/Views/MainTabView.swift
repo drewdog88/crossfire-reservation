@@ -60,8 +60,7 @@ struct MainTabView: View {
 
                 Group {
                     if session.user != nil {
-                        Text("Reserve")
-                            .font(Theme.sans(16))
+                        ReserveView(onShowMap: { _ in selectedTab = 3 })
                     } else {
                         VStack(spacing: 16) {
                             Text("Sign in to reserve field slots for your team.")
