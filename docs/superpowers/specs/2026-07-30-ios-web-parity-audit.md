@@ -47,7 +47,7 @@ platform differences** (intentional, not gaps).
 - [x] Signed-out Reserve placeholder: "Sign in to reserve field slots for your team." + Sign In
 - [x] Signed-out My Fields placeholder: "Sign in to view your reservations." + Sign In
 - [ ] Shared week state (`weekOffset`, **default 1 = Next Week**) persists across Schedule/Reserve/My Fields/Admin-Slots
-- [~] Sign out clears user + user list, resets to Schedule
+- [x] Sign out clears user + user list, resets to Schedule
 
 ### Auth sheet (`AuthModal`, `App.tsx:2936-3140`)
 - [x] Bottom sheet on mobile / centered on desktop; backdrop tap closes
@@ -57,11 +57,11 @@ platform differences** (intentional, not gaps).
 - [x] Register: First Name + Last Name (both `required`), email, password; **no team selection**
 - [x] Register helper text: "New coach accounts need admin approval before first sign-in. Your teams are assigned by an admin."
 - [x] Register button "Create Account" → "Creating…"
-- [~] On register success: switch to login mode, clear password, green notice **"Account created. An admin must approve it before you can sign in."**
+- [x] On register success: switch to login mode, clear password, green notice **"Account created. An admin must approve it before you can sign in."** — verified: exact string in code (AuthSheet:143); green-notice banner render path verified in-sim; register→201 curl-confirmed
 - [x] Register failure fallback: "Could not create account"
 - [x] Error banner (red) / notice banner (green) above form
 - [x] **Sign Out** (AFROTC miss — explicit line item; lives in the header, see shell)
-- [~] Login of a `pending` account surfaces server 403 "Your account is awaiting admin approval."
+- [x] Login of a `pending` account surfaces server 403 "Your account is awaiting admin approval." — verified: server returns exact 403 string (curl-confirmed); AuthSheet surfaces APIError.message verbatim in red banner (AuthSheet:147-150), banner render path verified in-sim
 
 ### Team Finder (`TeamFinder`, `App.tsx:3233-3394`)
 - [ ] Search box, placeholder "Find your team or coach (e.g. B14 D, Rafael)"
@@ -78,7 +78,7 @@ platform differences** (intentional, not gaps).
 - [x] Location filter chips ("All fields" + one per location); default "all"
 - [x] Field pitch cards per slot, grouped by date with DayHeader
 - [x] Empty state: "No fields scheduled for this week. Try a different week or location."
-- [~] Field pitch card location line → Fields Map link (only when lat+lon exist)
+- [x] Field pitch card location line → Fields Map link (only when lat+lon exist) — verified: tap navigates to Fields Map tab (tab 3); map render itself is Task 1.6
 
 ### Reserve (`ReserveView`, `App.tsx:1100-1266`)
 - [ ] WeekNav (shared week state)
