@@ -23,7 +23,7 @@ struct FieldPitchView: View {
         let (g1, g2) = grassColors(for: field.type)
 
         let myReservation = myTeamId != nil && slot.reservedTeamIds.contains(myTeamId!)
-        let canAct = mode == .reserve && myTeamId != nil && !dayBooked && open > 0 && !myReservation
+        let canAct = !myReservation && !dayBooked && open > 0
 
         let lanes = buildLanes(filled: filled, open: open)
 
