@@ -12,6 +12,15 @@ import SwiftUI
         async let who = try? APIClient.shared.me()
         if let c = await cat { catalog = c }
         user = (await who) ?? nil
+        #if DEBUG
+        // Dev convenience: auto-login when launched with CROSSFIRE_AUTO_EMAIL /
+        // CROSSFIRE_AUTO_PASSWORD env vars set (never committed — passed at launch).
+        if user == nil,
+           let email = Config.env("CROSSFIRE_AUTO_EMAIL"),
+           let password = Config.env("CROSSFIRE_AUTO_PASSWORD") {
+            try? await login(email: email, password: password)
+        }
+        #endif
         phase = .ready
     }
     func login(email: String, password: String) async throws {

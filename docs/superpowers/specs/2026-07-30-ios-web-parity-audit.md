@@ -39,7 +39,7 @@ platform differences** (intentional, not gaps).
 
 ### App shell (`App.tsx:3396-3737`)
 - [x] Loading splash: logo + "Loading…" until `bootstrap()` + `me()` resolve
-- [~] Header shows `{firstName} {lastName}` + lowercased role, avatar, **Sign out** button (signed in)
+- [x] Header shows `{firstName} {lastName}` + lowercased role, avatar, **Sign out** button (signed in)
 - [x] Header shows **Sign In** button (signed out)
 - [x] Bottom tab order: **Schedule, Reserve, My Fields, Fields Map** (+ **Admin** only when `role == admin`)
 - [x] Active tab tinted `cf-green`, icon scaled, underline bar
@@ -76,7 +76,7 @@ platform differences** (intentional, not gaps).
 ### Schedule (`ScheduleView`, `App.tsx:848-929`)
 - [x] WeekNav (prev/next, range label, This Week/Next Week/Past tags, **no min/max**)
 - [x] Location filter chips ("All fields" + one per location); default "all"
-- [~] Field pitch cards per slot, grouped by date with DayHeader
+- [x] Field pitch cards per slot, grouped by date with DayHeader
 - [x] Empty state: "No fields scheduled for this week. Try a different week or location."
 - [~] Field pitch card location line → Fields Map link (only when lat+lon exist)
 
@@ -99,16 +99,16 @@ platform differences** (intentional, not gaps).
 - [ ] Slots empty state: "No fields available this week. Try a different week or location." (distinct from Schedule's copy)
 
 ### Field pitch card (`FieldPitchCard`, `App.tsx:611-831`) — shared, signature visual
-- [ ] Field name + surface badge: Turf (blue) / Grass (green) / **Unknown (gray)**
-- [ ] Time range in cf-green
-- [ ] Open-count badge: "FULL" (red, open=0) / "1 OPEN" (amber) / "{n} OPEN" (green); "{filled}/{maxTeams} spots"
+- [x] Field name + surface badge: Turf (blue) / Grass (green) / **Unknown (gray)**
+- [x] Time range in cf-green
+- [x] Open-count badge: "FULL" (red, open=0) / "1 OPEN" (amber) / "{n} OPEN" (green); "{filled}/{maxTeams} spots"
 - [ ] "✓ RESERVED" green tag when selected team is in the slot (reserve mode)
-- [ ] Vertical striped pitch, height scales 150/168/184 by maxTeams; SVG markings
-- [ ] Team columns first, then open lanes; dashed chalk dividers
-- [ ] Occupied column: team label; **"YOURS" green badge** + green gradient for own team
+- [x] Vertical striped pitch, height scales 150/168/184 by maxTeams; SVG markings
+- [x] Team columns first, then open lanes; dashed chalk dividers
+- [~] Occupied column: team label; **"YOURS" green badge** + green gradient for own team
 - [ ] Empty interactive column (reserve, `canAct`): dashed "＋ Reserve", tappable (web also keyboard-Enter)
-- [ ] Empty non-interactive column: "Available"
-- [ ] **Narrow mode (>3 teams): labels rotate vertical**
+- [x] Empty non-interactive column: "Available"
+- [x] **Narrow mode (>3 teams): labels rotate vertical**
 - [ ] `canAct = !myReservation && !dayBooked && open>0` gating (client-side affordance only)
 - [ ] Reserve-mode footer: "{team} · reserved" + danger **Cancel**; or amber "Already booked a field on this day"; or red "All slots taken for this day"; or hint "Tap an open section to claim your spot"
 - [ ] View mode has NO footer
