@@ -15,19 +15,20 @@ func runSelfTests() {
     let cal = Calendar(identifier: .gregorian)
     assert(cal.component(.weekday, from: wk[0]) == 2) // Monday
     // TeamSelector cascade (task 1.3)
+    // Fixture: collision pair (B14-D), unique with coach (G15-A), unique without coach (B12-C)
     let t1 = Team(id: "1", gender: "Boys", birthYear: 2014, level: "D", coachName: nil)
     let t2 = Team(id: "2", gender: "Boys", birthYear: 2014, level: "D", coachName: "Smith")
     let t3 = Team(id: "3", gender: "Girls", birthYear: 2015, level: "A", coachName: "Jones")
-    let t4 = Team(id: "4", gender: "Girls", birthYear: 2015, level: "A", coachName: nil)
+    let t4 = Team(id: "4", gender: "Boys", birthYear: 2012, level: "C", coachName: nil)
     let teams = [t1, t2, t3, t4]
     // disambiguatedLabel: collision + non-nil coachName → append " · coachName"
     assert(TeamSelectorHelpers.disambiguatedLabel(t2, in: teams) == "B14-D · Smith")
-    // collision but coachName nil → plain label
+    // collision + nil coachName → plain label
     assert(TeamSelectorHelpers.disambiguatedLabel(t1, in: teams) == "B14-D")
-    // no collision + coachName → plain label
+    // NO collision + coachName → plain label (t3 is unique G15-A)
     assert(TeamSelectorHelpers.disambiguatedLabel(t3, in: teams) == "G15-A")
-    // no collision + nil coachName → plain label
-    assert(TeamSelectorHelpers.disambiguatedLabel(t4, in: teams) == "G15-A")
+    // NO collision + nil coachName → plain label (t4 is unique B12-C)
+    assert(TeamSelectorHelpers.disambiguatedLabel(t4, in: teams) == "B12-C")
     // useCascade: >6 → true, ≤6 → false
     assert(TeamSelectorHelpers.useCascade(teams.count) == false) // 4
     assert(TeamSelectorHelpers.useCascade(6) == false)
