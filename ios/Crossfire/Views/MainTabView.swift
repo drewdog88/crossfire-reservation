@@ -4,6 +4,8 @@ struct MainTabView: View {
     @EnvironmentObject var session: Session
     @State private var selectedTab = 0
     @State private var showAuth = false
+    @State private var mapFocusId: String?
+    @State private var pendingMapFocus = false
 
     #if DEBUG
     init() {
@@ -50,9 +52,23 @@ struct MainTabView: View {
 
             Divider()
 
+            // Team Finder (shown on non-admin tabs when signed in)
+            if selectedTab != 4 && session.user != nil {
+                TeamFinderView(
+                    teams: session.catalog.teams,
+                    fields: session.catalog.fields,
+                    locations: session.catalog.locations,
+                    slots: session.catalog.slots
+                )
+            }
+
             // Tab content
             TabView(selection: $selectedTab) {
-                ScheduleView(onShowMap: { _ in selectedTab = 3 })
+                ScheduleView(onShowMap: { id in
+                    mapFocusId = id
+                    pendingMapFocus = true
+                    selectedTab = 3
+                })
                     .tag(0)
                     .tabItem {
                         Label("Schedule", systemImage: "calendar")
@@ -60,7 +76,11 @@ struct MainTabView: View {
 
                 Group {
                     if session.user != nil {
-                        ReserveView(onShowMap: { _ in selectedTab = 3 })
+                        ReserveView(onShowMap: { id in
+                            mapFocusId = id
+                            pendingMapFocus = true
+                            selectedTab = 3
+                        })
                     } else {
                         VStack(spacing: 16) {
                             Text("Sign in to reserve field slots for your team.")
@@ -112,12 +132,15 @@ struct MainTabView: View {
                     Label("My Fields", systemImage: "list.bullet")
                 }
 
-                Text("Fields Map")
-                    .font(Theme.sans(16))
-                    .tag(3)
-                    .tabItem {
-                        Label("Fields Map", systemImage: "map")
-                    }
+                MapView(
+                    locations: session.catalog.locations,
+                    fields: session.catalog.fields,
+                    focusLocationId: mapFocusId
+                )
+                .tag(3)
+                .tabItem {
+                    Label("Fields Map", systemImage: "map")
+                }
 
                 if session.isAdmin {
                     Text("Admin")
@@ -134,6 +157,17 @@ struct MainTabView: View {
                 if session.user == nil && (newValue == 1 || newValue == 2) {
                     showAuth = true
                     selectedTab = oldValue
+                }
+
+                // Clear map focus when user taps Map tab directly (not via field link)
+                if newValue == 3 {
+                    if pendingMapFocus {
+                        // Arriving via field link; keep focus
+                        pendingMapFocus = false
+                    } else {
+                        // Direct tap on Map tab; clear focus
+                        mapFocusId = nil
+                    }
                 }
             }
         }
