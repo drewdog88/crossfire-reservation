@@ -124,12 +124,12 @@ actor APIClient {
             let email: String
             let password: String
         }
-        // src/api.ts:50 returns Promise<void>, so decode a nullable unit
-        let _: String? = try await request("/auth/register", method: "POST", body: Body(firstName: firstName, lastName: lastName, email: email, password: password), decode: String?.self)
+        // api/auth/register.js:18 returns 201 {ok:true}
+        let _: OkResponse = try await request("/auth/register", method: "POST", body: Body(firstName: firstName, lastName: lastName, email: email, password: password), decode: OkResponse.self)
     }
 
     func logout() async throws {
-        let _: String? = try await request("/auth/logout", method: "POST", decode: String?.self)
+        let _: OkResponse = try await request("/auth/logout", method: "POST", decode: OkResponse.self)
     }
 
     // MARK: - Reservations

@@ -7,6 +7,6 @@ enum Config {
     }
     static var apiBaseURL: URL {
         if let override = env("CROSSFIRE_API_BASE"), let u = URL(string: override) { return u }
-        return URL(string: "https://crossfire-reservation.vercel.app")!  // TODO: confirm prod host
+        return URL(string: "https://crossfire-reservation.vercel.app")!
     }
 }

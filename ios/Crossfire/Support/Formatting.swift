@@ -33,25 +33,25 @@ enum Formatting {
     }
 
     static func dateToStr(_ d: Date) -> String {
-        let f = DateFormatter(); f.calendar = cal; f.dateFormat = "yyyy-MM-dd"; return f.string(from: d)
+        let f = DateFormatter(); f.calendar = cal; f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"; return f.string(from: d)
     }
 
     static func weekRangeLabel(_ dates: [Date]) -> String {
-        let f = DateFormatter(); f.dateFormat = "MMM d"
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US"); f.dateFormat = "MMM d"
         return "\(f.string(from: dates[0])) – \(f.string(from: dates[6]))"
     }
 
     static func formatDisplayDate(_ dateStr: String) -> String {
-        let inF = DateFormatter(); inF.calendar = cal; inF.dateFormat = "yyyy-MM-dd"
+        let inF = DateFormatter(); inF.calendar = cal; inF.locale = Locale(identifier: "en_US_POSIX"); inF.dateFormat = "yyyy-MM-dd"
         guard let d = inF.date(from: dateStr) else { return dateStr }
-        let outF = DateFormatter(); outF.dateFormat = "EEE, MMM d"
+        let outF = DateFormatter(); outF.locale = Locale(identifier: "en_US"); outF.dateFormat = "EEE, MMM d"
         return outF.string(from: d)
     }
 
     static func formatDayHeader(_ dateStr: String) -> String {
-        let inF = DateFormatter(); inF.calendar = cal; inF.dateFormat = "yyyy-MM-dd"
+        let inF = DateFormatter(); inF.calendar = cal; inF.locale = Locale(identifier: "en_US_POSIX"); inF.dateFormat = "yyyy-MM-dd"
         guard let d = inF.date(from: dateStr) else { return dateStr }
-        let outF = DateFormatter(); outF.dateFormat = "EEEE, MMM d"
+        let outF = DateFormatter(); outF.locale = Locale(identifier: "en_US"); outF.dateFormat = "EEEE, MMM d"
         return outF.string(from: d)
     }
 }
