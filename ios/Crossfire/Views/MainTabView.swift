@@ -87,8 +87,7 @@ struct MainTabView: View {
 
                 Group {
                     if session.user != nil {
-                        Text("My Fields")
-                            .font(Theme.sans(16))
+                        MyFieldsView()
                     } else {
                         VStack(spacing: 16) {
                             Text("Sign in to view your reservations.")
