@@ -45,9 +45,7 @@ struct AdminView: View {
                     case .locations:
                         AdminLocationsView(locations: session.catalog.locations, refresh: { await refreshAdmin() })
                     case .fields:
-                        Text("Fields")
-                            .font(Theme.sans(16))
-                            .foregroundColor(Color(red: 0xf1/255, green: 0xf5/255, blue: 0xf9/255))
+                        AdminFieldsView(fields: session.catalog.fields, locations: session.catalog.locations, refresh: { await refreshAdmin() })
                     case .slots:
                         Text("Slots")
                             .font(Theme.sans(16))
