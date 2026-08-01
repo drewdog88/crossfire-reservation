@@ -21,6 +21,15 @@ struct AuthSheet: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
+                // Logo header (navy strip, matching web loading splash)
+                Image("CrossfireLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 40)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(Color(red: 0x0f/255, green: 0x17/255, blue: 0x2a/255))
+
                 // Mode toggle
                 Picker("Mode", selection: $mode) {
                     ForEach(Mode.allCases, id: \.self) { m in

@@ -18,7 +18,15 @@ struct MainTabView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            HStack {
+            HStack(spacing: 10) {
+                Image("CrossfireLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 32)
+                Text("FIELD MANAGER")
+                    .font(.system(size: 9, weight: .heavy))
+                    .tracking(1.5)
+                    .foregroundColor(Theme.cfGreen)
                 Spacer()
                 if let user = session.user {
                     Text("\(user.firstName) \(user.lastName)")
