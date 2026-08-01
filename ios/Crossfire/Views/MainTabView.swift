@@ -52,8 +52,8 @@ struct MainTabView: View {
 
             Divider()
 
-            // Team Finder (shown on non-admin tabs when signed in)
-            if selectedTab != 4 && session.user != nil {
+            // Team Finder (shown on non-admin tabs)
+            if selectedTab != 4 {
                 TeamFinderView(
                     teams: session.catalog.teams,
                     fields: session.catalog.fields,
