@@ -143,8 +143,7 @@ struct MainTabView: View {
                 }
 
                 if session.isAdmin {
-                    Text("Admin")
-                        .font(Theme.sans(16))
+                    AdminView()
                         .tag(4)
                         .tabItem {
                             Label("Admin", systemImage: "gear")
