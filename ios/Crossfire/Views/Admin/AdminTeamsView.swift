@@ -50,10 +50,10 @@ struct AdminTeamsView: View {
                         TextField("e.g. 2012", text: Binding(
                             get: { birthYear.map { String($0) } ?? "" },
                             set: { newValue in
-                                if let val = Int(newValue), val >= 2005, val <= 2020 {
-                                    birthYear = val
-                                } else if newValue.isEmpty {
+                                if newValue.isEmpty {
                                     birthYear = nil
+                                } else if let v = Int(newValue) {
+                                    birthYear = v
                                 }
                             }
                         ))
