@@ -10,7 +10,6 @@ struct AdminView: View {
 
     @State private var selectedTab: AdminTab = .teams
     @State private var users: [User] = []
-    @State private var errorMessage: String?
 
     var body: some View {
         let pending = users.filter { ($0.status ?? .pending) == .pending }.count
@@ -59,15 +58,6 @@ struct AdminView: View {
         .task {
             await refreshAdmin()
         }
-        .alert(isPresented: .constant(errorMessage != nil)) {
-            Alert(
-                title: Text("Error"),
-                message: Text(errorMessage ?? ""),
-                dismissButton: .default(Text("OK")) {
-                    errorMessage = nil
-                }
-            )
-        }
     }
 
     // MARK: - Tab Button
@@ -112,9 +102,5 @@ struct AdminView: View {
     private func refreshAdmin() async {
         await session.refreshCatalog()
         users = (try? await APIClient.shared.adminList("users")) ?? users
-    }
-
-    private func reportError(_ error: Error) {
-        errorMessage = (error as? APIError)?.message ?? "Something went wrong."
     }
 }
