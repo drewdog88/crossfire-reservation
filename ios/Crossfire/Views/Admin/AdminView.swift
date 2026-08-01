@@ -41,9 +41,7 @@ struct AdminView: View {
                 VStack(spacing: 16) {
                     switch selectedTab {
                     case .teams:
-                        Text("Teams")
-                            .font(Theme.sans(16))
-                            .foregroundColor(Color(red: 0xf1/255, green: 0xf5/255, blue: 0xf9/255))
+                        AdminTeamsView(teams: session.catalog.teams, refresh: { await refreshAdmin() })
                     case .locations:
                         Text("Locations")
                             .font(Theme.sans(16))
