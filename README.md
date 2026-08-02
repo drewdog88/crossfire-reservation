@@ -43,6 +43,19 @@ applied with `node scripts/apply-migration.mjs <file>`. They back the fixed
 lookups in `api/*.js` (e.g. `reservations.team_id`, `slots.date`) and keep the
 DB off a sequential-scan cliff as bookings accumulate.
 
+## Admin scripts
+
+Demo-phase helpers under `scripts/` read the DB URL from `.env.local` (never
+committed). No DDL required for routine account chores:
+
+```bash
+# Reset an existing user's password (bcrypt, cost 12 — matches the API)
+node scripts/reset-password.mjs admin@crossfireselect.com 'NewPass123!'
+
+# Provision / re-activate the demo coach and assign it a couple of teams
+node scripts/create-demo-user.mjs
+```
+
 ## Deployment
 
 Deployed on **Vercel** as a single project, auto-deploying from `main`:
