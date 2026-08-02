@@ -938,35 +938,11 @@ function disambiguatedLabel(team: Team, teams: Team[]): string {
   return collides && team.coachName ? `${label} · ${team.coachName}` : label
 }
 
-// Chip that highlights green when active, matching the app's existing pill style.
-function SelectorChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg font-display font-700 text-sm tracking-wide transition-all ${
-        active
-          ? "bg-cf-green text-navy-950"
-          : "bg-navy-700 text-navy-300 hover:bg-navy-600"
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-// Selects which team a reservation is for. A short list (coaches) renders as a
-// single wrapping pill row; a large list (admin — every team) cascades
-// Gender → Birth Year → Team so no option row is ever an unwieldy blob and no
-// keyboard is needed. `selectedTeamId` remains the single source of truth; this
-// is only a progressive way to set it.
+// Selects which team a reservation is for. A single dropdown grouped by
+// "Gender · Birth Year" so the option list stays scannable no matter how many
+// teams exist — the same drill-down the iOS client uses, expressed as native
+// <optgroup>s. `selectedTeamId` remains the single source of truth; this is
+// only the control that sets it.
 function TeamSelector({
   teams,
   selectedTeamId,
@@ -978,44 +954,27 @@ function TeamSelector({
   onSelect: (id: string) => void
   label: string
 }) {
-  const selected = teams.find((t) => t.id === selectedTeamId) ?? null
-  const useCascade = teams.length > 6
-
   // Genders present, in a stable Boys→Girls order.
   const genders = (["Boys", "Girls"] as Gender[]).filter((g) =>
     teams.some((t) => t.gender === g),
   )
-  const activeGender = selected?.gender ?? genders[0]
 
-  const years = Array.from(
-    new Set(teams.filter((t) => t.gender === activeGender).map((t) => t.birthYear)),
-  ).sort((a, b) => a - b)
-  const activeYear = selected?.birthYear ?? years[0]
-
-  const teamsForYear = teams
-    .filter((t) => t.gender === activeGender && t.birthYear === activeYear)
-    .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))
-
-  // When the gender/year changes, keep the current pick if it still fits that
-  // group, otherwise fall to the first team so selectedTeamId is never stranded.
-  function pickGender(g: Gender) {
-    if (selected?.gender === g) return
-    const firstYear = Array.from(
-      new Set(teams.filter((t) => t.gender === g).map((t) => t.birthYear)),
-    ).sort((a, b) => a - b)[0]
-    const first = teams
-      .filter((t) => t.gender === g && t.birthYear === firstYear)
-      .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))[0]
-    if (first) onSelect(first.id)
-  }
-
-  function pickYear(y: number) {
-    if (selected?.birthYear === y && selected?.gender === activeGender) return
-    const first = teams
-      .filter((t) => t.gender === activeGender && t.birthYear === y)
-      .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))[0]
-    if (first) onSelect(first.id)
-  }
+  // Build the ordered groups: for each gender, each birth year (ascending),
+  // list its teams sorted by label. Group headers include the gender only when
+  // both genders are present, so a single-gender club isn't labelled redundantly.
+  const groups = genders.flatMap((gender) => {
+    const years = Array.from(
+      new Set(teams.filter((t) => t.gender === gender).map((t) => t.birthYear)),
+    ).sort((a, b) => a - b)
+    return years.map((year) => {
+      const groupTeams = teams
+        .filter((t) => t.gender === gender && t.birthYear === year)
+        .sort((a, b) => teamLabel(a).localeCompare(teamLabel(b)))
+      const heading =
+        genders.length > 1 ? `${gender} · ${year}` : String(year)
+      return { key: `${gender}-${year}`, heading, teams: groupTeams }
+    })
+  })
 
   return (
     <div>
@@ -1023,74 +982,22 @@ function TeamSelector({
         {label}
       </label>
 
-      {!useCascade ? (
-        <div className="flex gap-2 flex-wrap">
-          {teams.map((t) => (
-            <SelectorChip
-              key={t.id}
-              active={selectedTeamId === t.id}
-              onClick={() => onSelect(t.id)}
-            >
-              {teamLabel(t)}
-            </SelectorChip>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {genders.length > 1 && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest w-12 shrink-0">
-                Gender
-              </span>
-              <div className="flex gap-2 flex-wrap">
-                {genders.map((g) => (
-                  <SelectorChip
-                    key={g}
-                    active={activeGender === g}
-                    onClick={() => pickGender(g)}
-                  >
-                    {g}
-                  </SelectorChip>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest w-12 shrink-0">
-              Age
-            </span>
-            <div className="flex gap-2 flex-wrap">
-              {years.map((y) => (
-                <SelectorChip
-                  key={y}
-                  active={activeYear === y}
-                  onClick={() => pickYear(y)}
-                >
-                  {y}
-                </SelectorChip>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-navy-500 font-display font-700 uppercase tracking-widest w-12 shrink-0">
-              Team
-            </span>
-            <div className="flex gap-2 flex-wrap">
-              {teamsForYear.map((t) => (
-                <SelectorChip
-                  key={t.id}
-                  active={selectedTeamId === t.id}
-                  onClick={() => onSelect(t.id)}
-                >
-                  {disambiguatedLabel(t, teamsForYear)}
-                </SelectorChip>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <select
+        value={selectedTeamId}
+        onChange={(e) => onSelect(e.target.value)}
+        aria-label={label}
+      >
+        {selectedTeamId === "" && <option value="">Select a team</option>}
+        {groups.map((group) => (
+          <optgroup key={group.key} label={group.heading}>
+            {group.teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {disambiguatedLabel(t, group.teams)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
     </div>
   )
 }

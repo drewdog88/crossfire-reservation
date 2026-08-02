@@ -8,7 +8,9 @@ time slots, and users.
 
 - **React 19** + **TypeScript** + **Vite 8**
 - **Tailwind CSS v4** (via `@tailwindcss/vite`, no config file — theme lives in `src/index.css`)
-- Client-side only for now: state persists to `localStorage` (no backend/API)
+- **Vercel serverless functions** (`api/*`) over a **Neon Postgres** database as the
+  single source of truth — no `localStorage`, no fallback store
+- A native **SwiftUI iOS client** (`ios/`) signs against the same API
 
 ## Local development
 
@@ -29,6 +31,17 @@ different days; 1–8 configurable spots per slot.
 
 **Roles:** `admin` (full management) and `coach` (reserve for own teams). The
 weekly schedule view is public/unauthenticated.
+
+**Team selection:** the "Reserving for" control is a single dropdown whose
+options are grouped by gender and birth year (via native `<optgroup>` on web
+and a nested `Menu` on iOS). Teams are addressed by **birth year**, matching
+US youth-soccer registration — not a computed age. This scales cleanly to a
+full club roster without the old wrapping-chip cascade.
+
+**Performance:** query-shape indexes live in `scripts/migrations/` and are
+applied with `node scripts/apply-migration.mjs <file>`. They back the fixed
+lookups in `api/*.js` (e.g. `reservations.team_id`, `slots.date`) and keep the
+DB off a sequential-scan cliff as bookings accumulate.
 
 ## Deployment
 
